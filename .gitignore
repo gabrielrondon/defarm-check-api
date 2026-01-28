@@ -46,3 +46,5 @@ tmp/
 data/*.csv
 data/*.zip
 data/*.xlsx
+data/ibama_embargos.json
+data/lista_suja.json
