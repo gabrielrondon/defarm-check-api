@@ -15,7 +15,10 @@
       "Bash(git commit:*)",
       "Bash(gh repo create:*)",
       "WebSearch",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:dadosabertos.ibama.gov.br)",
+      "Bash(unzip:*)"
     ]
   }
 }

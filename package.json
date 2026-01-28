@@ -32,6 +32,7 @@
     "@fastify/swagger": "^8.14.0",
     "@fastify/swagger-ui": "^3.0.0",
     "axios": "^1.7.7",
+    "csv-parse": "^6.1.0",
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.44.5",
     "fastify": "^4.29.1",
