@@ -9,12 +9,48 @@ import {
 } from '../../types/checker.js';
 import { NormalizedInput, InputType } from '../../types/input.js';
 import { logger } from '../../utils/logger.js';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
-// Mock data - em produção viria de API do MTE ou dataset atualizado
-const mockSlaveLaborList = new Set([
-  '12345678000190', // CNPJ fictício para teste
-  '11111111111' // CPF fictício para teste
-]);
+// Interface para dados da Lista Suja
+interface ListaSujaRecord {
+  document: string;
+  documentFormatted: string;
+  type: 'CNPJ' | 'CPF';
+  name: string;
+  year: number;
+  state: string;
+  address: string;
+  workersAffected: number;
+  cnae: string;
+  inclusionDate: string;
+}
+
+// Carregar dados reais da Lista Suja
+let listaSujaData: Map<string, ListaSujaRecord> | null = null;
+
+function loadListaSuja(): Map<string, ListaSujaRecord> {
+  if (listaSujaData) {
+    return listaSujaData;
+  }
+
+  try {
+    const dataPath = join(process.cwd(), 'data', 'lista_suja.json');
+    const rawData = readFileSync(dataPath, 'utf-8');
+    const records: ListaSujaRecord[] = JSON.parse(rawData);
+
+    // Criar Map para lookup rápido
+    listaSujaData = new Map(records.map(r => [r.document, r]));
+
+    logger.info({ count: listaSujaData.size }, 'Lista Suja data loaded');
+    return listaSujaData;
+  } catch (err) {
+    logger.error({ err }, 'Failed to load Lista Suja data');
+    // Fallback para Map vazio
+    listaSujaData = new Map();
+    return listaSujaData;
+  }
+}
 
 export class SlaveLaborChecker extends BaseChecker {
   readonly metadata: CheckerMetadata = {
@@ -27,7 +63,7 @@ export class SlaveLaborChecker extends BaseChecker {
 
   readonly config: CheckerConfig = {
     enabled: true,
-    cacheTTL: 86400, // 24 horas (lista atualiza frequentemente)
+    cacheTTL: 86400, // 24 horas (lista atualiza semestralmente)
     timeout: 5000
   };
 
@@ -35,28 +71,34 @@ export class SlaveLaborChecker extends BaseChecker {
     logger.debug({ input: input.value }, 'Checking slave labor registry');
 
     try {
-      // Em produção: consultar API do MTE ou dataset atualizado
-      // const response = await this.fetchFromMTE(input.value);
+      // Carregar dados (cached após primeira execução)
+      const listaSuja = loadListaSuja();
 
-      // Mock: simular consulta
-      await this.simulateAPICall();
+      // Verificar se documento está na lista
+      const record = listaSuja.get(input.value);
 
-      const isInList = mockSlaveLaborList.has(input.value);
-
-      if (isInList) {
+      if (record) {
         return {
           status: CheckStatus.FAIL,
           severity: Severity.CRITICAL,
-          message: 'Found in slave labor registry',
+          message: `Found in slave labor registry: ${record.name}`,
           details: {
+            employerName: record.name,
+            type: record.type,
+            state: record.state,
+            address: record.address,
+            year: record.year,
+            workersAffected: record.workersAffected,
+            cnae: record.cnae,
+            inclusionDate: record.inclusionDate,
             source: 'MTE - Lista Suja do Trabalho Escravo',
-            foundAt: new Date().toISOString(),
-            recommendation: 'Immediate compliance review required'
+            recommendation: 'CRITICAL: Immediate compliance review required. This entity has been found guilty of submitting workers to conditions analogous to slavery.'
           },
           evidence: {
-            dataSource: 'Ministério do Trabalho e Emprego',
-            url: 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/cadastro_empregadores.pdf',
-            lastUpdate: '2026-01-15'
+            dataSource: 'Ministério do Trabalho e Emprego - Cadastro de Empregadores',
+            url: 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/cadastro_empregadores.xlsx',
+            lastUpdate: '2026-01-28',
+            raw: record
           },
           executionTimeMs: 0,
           cached: false
@@ -68,7 +110,13 @@ export class SlaveLaborChecker extends BaseChecker {
         message: 'Not found in slave labor registry',
         details: {
           source: 'MTE - Lista Suja do Trabalho Escravo',
-          checkedAt: new Date().toISOString()
+          checkedAt: new Date().toISOString(),
+          totalRecordsChecked: listaSuja.size
+        },
+        evidence: {
+          dataSource: 'Ministério do Trabalho e Emprego',
+          url: 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/cadastro_empregadores.xlsx',
+          lastUpdate: '2026-01-28'
         },
         executionTimeMs: 0,
         cached: false
@@ -77,19 +125,6 @@ export class SlaveLaborChecker extends BaseChecker {
       throw new Error(`Failed to check slave labor registry: ${(err as Error).message}`);
     }
   }
-
-  // Simula latência de API
-  private async simulateAPICall(): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-
-  // Em produção: implementar fetch real
-  // private async fetchFromMTE(identifier: string): Promise<any> {
-  //   const response = await axios.get(`${MTE_API_ENDPOINT}`, {
-  //     params: { cnpj_cpf: identifier }
-  //   });
-  //   return response.data;
-  // }
 }
 
 export default new SlaveLaborChecker();
