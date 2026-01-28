@@ -1,0 +1,68 @@
+import Fastify from 'fastify';
+import { config } from '../config/index.js';
+import { logger } from '../utils/logger.js';
+import { errorHandler } from './middleware/error-handler.js';
+import { securityPlugin } from './plugins/security.js';
+import { swaggerPlugin } from './plugins/swagger.js';
+import { healthRoutes } from './routes/health.js';
+import { checkRoutes } from './routes/check.js';
+import { sourcesRoutes } from './routes/sources.js';
+
+export async function createServer() {
+  const app = Fastify({
+    logger: logger as any,
+    trustProxy: true,
+    requestIdHeader: 'x-request-id',
+    requestIdLogLabel: 'reqId'
+  });
+
+  // Error handler
+  app.setErrorHandler(errorHandler);
+
+  // Plugins
+  await securityPlugin(app);
+  await swaggerPlugin(app);
+
+  // Routes
+  await app.register(healthRoutes);
+  await app.register(checkRoutes);
+  await app.register(sourcesRoutes);
+
+  // Root endpoint
+  app.get('/', async () => {
+    return {
+      name: 'Check API',
+      version: config.api.version,
+      description: 'DeFarm Compliance Socioambiental API',
+      docs: '/docs',
+      endpoints: {
+        health: '/health',
+        check: 'POST /check',
+        sources: '/sources'
+      }
+    };
+  });
+
+  return app;
+}
+
+export async function startServer() {
+  const app = await createServer();
+
+  try {
+    await app.listen({
+      port: config.server.port,
+      host: config.server.host
+    });
+
+    logger.info(
+      `Server listening on http://${config.server.host}:${config.server.port}`
+    );
+    logger.info(`Docs available at http://${config.server.host}:${config.server.port}/docs`);
+
+    return app;
+  } catch (err) {
+    logger.error({ err }, 'Failed to start server');
+    process.exit(1);
+  }
+}
