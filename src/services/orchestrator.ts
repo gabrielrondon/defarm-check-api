@@ -18,7 +18,7 @@ export class OrchestratorService {
   // Executa check completo
   async executeCheck(request: CheckRequest): Promise<CheckResponse> {
     const startTime = Date.now();
-    const checkId = `chk_${uuidv4().replace(/-/g, '')}`;
+    const checkId = uuidv4(); // UUID válido para PostgreSQL
 
     logger.info({ checkId, input: request.input }, 'Starting check');
 

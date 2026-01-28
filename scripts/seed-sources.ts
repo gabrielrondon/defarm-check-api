@@ -7,13 +7,27 @@ const sources = [
     name: 'Slave Labor Registry',
     category: 'social',
     description: 'Verifica se CNPJ/CPF está na Lista Suja do Trabalho Escravo (MTE)',
-    dataSourceUrl: 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/cadastro_empregadores.pdf',
-    lastUpdated: new Date('2026-01-15'),
+    dataSourceUrl: 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/cadastro_empregadores.xlsx',
+    lastUpdated: new Date('2026-01-28'),
     isActive: true,
     priority: 9,
     config: {
-      endpoint: 'https://api.mte.gov.br/v1/lista-suja',
-      cacheTTL: 86400
+      cacheTTL: 86400,
+      totalRecords: 678
+    }
+  },
+  {
+    name: 'IBAMA Embargoes',
+    category: 'environmental',
+    description: 'Verifica embargos ambientais do IBAMA por CPF/CNPJ',
+    dataSourceUrl: 'https://dadosabertos.ibama.gov.br/dataset/fiscalizacao-termo-de-embargo',
+    lastUpdated: new Date('2026-01-28'),
+    isActive: true,
+    priority: 9,
+    config: {
+      cacheTTL: 604800,
+      totalRecords: 65953,
+      totalEmbargoes: 80840
     }
   },
   {
