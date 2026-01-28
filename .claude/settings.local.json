@@ -18,7 +18,8 @@
       "Bash(npx tsx:*)",
       "Bash(git push:*)",
       "WebFetch(domain:dadosabertos.ibama.gov.br)",
-      "Bash(unzip:*)"
+      "Bash(unzip:*)",
+      "Bash(git rm:*)"
     ]
   }
 }
