@@ -11,16 +11,20 @@
  * - Status: Ativo (regularizado), Pendente, Cancelado, Suspenso
  * - NÃO ter CAR ativo = IRREGULAR (alto risco)
  *
- * Estados prioritários (90% do agro brasileiro):
+ * Estados cobertos (95% do agro brasileiro):
  * - MT (Mato Grosso): líder em produção de soja e gado
  * - PA (Pará): maior desmatamento, foco em compliance
  * - GO (Goiás): grande produtor de grãos
+ * - MS (Mato Grosso do Sul): grande produtor de soja e gado
+ * - RS (Rio Grande do Sul): arroz, soja, pecuária
  *
  * Uso:
  *   npm run data:car-mt    # Baixar Mato Grosso
  *   npm run data:car-pa    # Baixar Pará
  *   npm run data:car-go    # Baixar Goiás
- *   npm run data:car-all   # Baixar todos (CUIDADO: pode ser grande!)
+ *   npm run data:car-ms    # Baixar Mato Grosso do Sul
+ *   npm run data:car-rs    # Baixar Rio Grande do Sul
+ *   npm run data:car-all   # Baixar todos (CUIDADO: pode ser MUITO grande!)
  */
 
 import fs from 'fs/promises';
