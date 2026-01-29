@@ -29,7 +29,13 @@
       "Bash(npm run data:prodes:*)",
       "Bash(PGPASSWORD=gA22AgAddGceGg55Dd62d6b3EaD32bg5 psql:*)",
       "Bash(redis-cli ping:*)",
-      "Bash(redis-cli:*)"
+      "Bash(redis-cli:*)",
+      "Bash(python3:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:gA22AgAddGceGg55Dd62d6b3EaD32bg5@postgis.railway.internal:5432/railway\" npm run db:migrate:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:gA22AgAddGceGg55Dd62d6b3EaD32bg5@caboose.proxy.rlwy.net:18740/railway\" npm run db:migrate:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:gA22AgAddGceGg55Dd62d6b3EaD32bg5@caboose.proxy.rlwy.net:18740/railway\" tsx scripts/seed-lista-suja-db.ts:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:gA22AgAddGceGg55Dd62d6b3EaD32bg5@caboose.proxy.rlwy.net:18740/railway\" npx tsx:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:gA22AgAddGceGg55Dd62d6b3EaD32bg5@caboose.proxy.rlwy.net:18740/railway\" timeout 60 npx tsx:*)"
     ]
   }
 }

@@ -57,9 +57,48 @@ export const prodesDeforestation = pgTable('prodes_deforestation', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 });
 
+// Tabela Lista Suja do Trabalho Escravo (MTE)
+export const listaSuja = pgTable('lista_suja', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  document: varchar('document', { length: 20 }).notNull().unique(), // CPF ou CNPJ sem formatação
+  documentFormatted: varchar('document_formatted', { length: 25 }),
+  type: varchar('type', { length: 10 }).notNull(), // CPF ou CNPJ
+  name: text('name').notNull(),
+  year: integer('year').notNull(),
+  state: varchar('state', { length: 2 }),
+  address: text('address'),
+  workersAffected: integer('workers_affected'),
+  cnae: varchar('cnae', { length: 50 }),
+  inclusionDate: varchar('inclusion_date', { length: 100 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
+// Tabela de Embargos IBAMA
+export const ibamaEmbargoes = pgTable('ibama_embargoes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  document: varchar('document', { length: 20 }).notNull(), // CPF ou CNPJ sem formatação
+  documentFormatted: varchar('document_formatted', { length: 25 }),
+  type: varchar('type', { length: 10 }).notNull(), // CPF ou CNPJ
+  name: text('name').notNull(),
+  embargoCount: integer('embargo_count').notNull(),
+  totalAreaHa: integer('total_area_ha').notNull(),
+  embargos: jsonb('embargos').$type<any[]>().notNull(), // Array de embargos com detalhes
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
 // Índices para performance
 export const checkRequestsIdx = {
   inputTypeIdx: 'idx_check_requests_input_type',
   inputValueIdx: 'idx_check_requests_input_value',
   createdAtIdx: 'idx_check_requests_created_at'
+};
+
+export const listaSujaIdx = {
+  documentIdx: 'idx_lista_suja_document',
+  typeIdx: 'idx_lista_suja_type'
+};
+
+export const ibamaEmbargoesIdx = {
+  documentIdx: 'idx_ibama_embargoes_document',
+  typeIdx: 'idx_ibama_embargoes_type'
 };

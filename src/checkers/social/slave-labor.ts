@@ -9,48 +9,9 @@ import {
 } from '../../types/checker.js';
 import { NormalizedInput, InputType } from '../../types/input.js';
 import { logger } from '../../utils/logger.js';
-import { readFileSync } from 'fs';
-import { join } from 'path';
-
-// Interface para dados da Lista Suja
-interface ListaSujaRecord {
-  document: string;
-  documentFormatted: string;
-  type: 'CNPJ' | 'CPF';
-  name: string;
-  year: number;
-  state: string;
-  address: string;
-  workersAffected: number;
-  cnae: string;
-  inclusionDate: string;
-}
-
-// Carregar dados reais da Lista Suja
-let listaSujaData: Map<string, ListaSujaRecord> | null = null;
-
-function loadListaSuja(): Map<string, ListaSujaRecord> {
-  if (listaSujaData) {
-    return listaSujaData;
-  }
-
-  try {
-    const dataPath = join(process.cwd(), 'data', 'lista_suja.json');
-    const rawData = readFileSync(dataPath, 'utf-8');
-    const records: ListaSujaRecord[] = JSON.parse(rawData);
-
-    // Criar Map para lookup rápido
-    listaSujaData = new Map(records.map(r => [r.document, r]));
-
-    logger.info({ count: listaSujaData.size }, 'Lista Suja data loaded');
-    return listaSujaData;
-  } catch (err) {
-    logger.error({ err }, 'Failed to load Lista Suja data');
-    // Fallback para Map vazio
-    listaSujaData = new Map();
-    return listaSujaData;
-  }
-}
+import { db } from '../../db/client.js';
+import { listaSuja } from '../../db/schema.js';
+import { eq } from 'drizzle-orm';
 
 export class SlaveLaborChecker extends BaseChecker {
   readonly metadata: CheckerMetadata = {
@@ -71,11 +32,14 @@ export class SlaveLaborChecker extends BaseChecker {
     logger.debug({ input: input.value }, 'Checking slave labor registry');
 
     try {
-      // Carregar dados (cached após primeira execução)
-      const listaSuja = loadListaSuja();
+      // Query banco de dados
+      const results = await db
+        .select()
+        .from(listaSuja)
+        .where(eq(listaSuja.document, input.value))
+        .limit(1);
 
-      // Verificar se documento está na lista
-      const record = listaSuja.get(input.value);
+      const record = results[0];
 
       if (record) {
         return {
@@ -98,7 +62,18 @@ export class SlaveLaborChecker extends BaseChecker {
             dataSource: 'Ministério do Trabalho e Emprego - Cadastro de Empregadores',
             url: 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/cadastro_empregadores.xlsx',
             lastUpdate: '2026-01-28',
-            raw: record
+            raw: {
+              document: record.document,
+              documentFormatted: record.documentFormatted,
+              type: record.type,
+              name: record.name,
+              year: record.year,
+              state: record.state,
+              address: record.address,
+              workersAffected: record.workersAffected,
+              cnae: record.cnae,
+              inclusionDate: record.inclusionDate
+            }
           },
           executionTimeMs: 0,
           cached: false
@@ -110,8 +85,7 @@ export class SlaveLaborChecker extends BaseChecker {
         message: 'Not found in slave labor registry',
         details: {
           source: 'MTE - Lista Suja do Trabalho Escravo',
-          checkedAt: new Date().toISOString(),
-          totalRecordsChecked: listaSuja.size
+          checkedAt: new Date().toISOString()
         },
         evidence: {
           dataSource: 'Ministério do Trabalho e Emprego',

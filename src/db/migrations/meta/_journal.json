@@ -15,6 +15,20 @@
       "when": 1769643726177,
       "tag": "0001_acoustic_christian_walker",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769649069668,
+      "tag": "0002_pretty_gideon",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1769649931767,
+      "tag": "0003_fast_harrier",
+      "breakpoints": true
     }
   ]
 }
