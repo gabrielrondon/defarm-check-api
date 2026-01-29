@@ -17,7 +17,7 @@ info:
     - Cadastro Ambiental Rural (CAR/SICAR) - Cobertura nacional 27 estados
 
     **Documentação completa:** https://github.com/gabrielrondon/defarm-check-api
-  version: 2.0.0
+  version: 2.1.0
   contact:
     name: DeFarm Support
     email: suporte@defarm.com
@@ -37,6 +37,8 @@ tags:
     description: Compliance check operations
   - name: sources
     description: Data source information
+  - name: samples
+    description: Sample data for testing
   - name: health
     description: Health check endpoints
 
@@ -576,6 +578,229 @@ paths:
                 services:
                   database: "ok"
                   redis: "down"
+
+  /samples/all:
+    get:
+      tags:
+        - samples
+      summary: Get one sample from each data source
+      description: |
+        Retorna um exemplo de cada fonte de dados disponível.
+
+        Útil para:
+        - Overview rápido de todas as fontes
+        - Testes end-to-end
+        - Demos para clientes
+
+        Cada exemplo inclui um `testUrl` pronto para usar no endpoint `/check`.
+      operationId: getSamplesAll
+      security: []
+      responses:
+        '200':
+          description: Samples retornados com sucesso
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  listaSuja:
+                    type: object
+                    nullable: true
+                  ibama:
+                    type: object
+                    nullable: true
+                  terrasIndigenas:
+                    type: object
+                    nullable: true
+                  unidadesConservacao:
+                    type: object
+                    nullable: true
+                  deter:
+                    type: object
+                    nullable: true
+                  car:
+                    type: object
+                    nullable: true
+                  prodes:
+                    type: object
+                    nullable: true
+
+  /samples/lista-suja:
+    get:
+      tags:
+        - samples
+      summary: Get samples from Lista Suja
+      description: |
+        Retorna 10 exemplos aleatórios de CPF/CNPJ presentes na Lista Suja do Trabalho Escravo.
+
+        Use estes exemplos para testar se a API realmente detecta trabalho escravo.
+      operationId: getSamplesListaSuja
+      security: []
+      responses:
+        '200':
+          description: 10 samples retornados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  source:
+                    type: string
+                  count:
+                    type: integer
+                  samples:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        document:
+                          type: string
+                        documentFormatted:
+                          type: string
+                        name:
+                          type: string
+                        type:
+                          type: string
+                        state:
+                          type: string
+                        year:
+                          type: integer
+                        workersAffected:
+                          type: integer
+                        testUrl:
+                          type: string
+
+  /samples/ibama:
+    get:
+      tags:
+        - samples
+      summary: Get samples from IBAMA Embargoes
+      description: |
+        Retorna 10 exemplos aleatórios de CPF/CNPJ com embargos ambientais do IBAMA.
+
+        Use estes exemplos para testar detecção de embargos.
+      operationId: getSamplesIbama
+      security: []
+      responses:
+        '200':
+          description: 10 samples retornados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  source:
+                    type: string
+                  count:
+                    type: integer
+                  samples:
+                    type: array
+                    items:
+                      type: object
+
+  /samples/terras-indigenas:
+    get:
+      tags:
+        - samples
+      summary: Get samples from Indigenous Lands
+      description: |
+        Retorna 10 coordenadas aleatórias dentro de Terras Indígenas demarcadas.
+
+        Use estas coordenadas para testar detecção de sobreposição com TIs.
+      operationId: getSamplesTerrasIndigenas
+      security: []
+      responses:
+        '200':
+          description: 10 samples retornados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  source:
+                    type: string
+                  count:
+                    type: integer
+                  samples:
+                    type: array
+                    items:
+                      type: object
+
+  /samples/unidades-conservacao:
+    get:
+      tags:
+        - samples
+      summary: Get samples from Conservation Units
+      description: |
+        Retorna 10 coordenadas aleatórias dentro de Unidades de Conservação.
+
+        Use estas coordenadas para testar detecção de sobreposição com UCs.
+      operationId: getSamplesUnidadesConservacao
+      security: []
+      responses:
+        '200':
+          description: 10 samples retornados
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /samples/deter:
+    get:
+      tags:
+        - samples
+      summary: Get samples from DETER alerts
+      description: |
+        Retorna 10 coordenadas aleatórias com alertas DETER recentes (últimos 90 dias).
+
+        Use estas coordenadas para testar detecção de desmatamento em tempo real.
+      operationId: getSamplesDeter
+      security: []
+      responses:
+        '200':
+          description: 10 samples retornados
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /samples/car:
+    get:
+      tags:
+        - samples
+      summary: Get samples from CAR with irregular status
+      description: |
+        Retorna 10 coordenadas aleatórias com CAR cancelado, suspenso ou pendente.
+
+        Use estas coordenadas para testar detecção de irregularidades no CAR.
+      operationId: getSamplesCar
+      security: []
+      responses:
+        '200':
+          description: 10 samples retornados
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /samples/prodes:
+    get:
+      tags:
+        - samples
+      summary: Get samples from PRODES deforestation
+      description: |
+        Retorna 10 coordenadas aleatórias com desmatamento detectado pelo PRODES.
+
+        Use estas coordenadas para testar detecção de desmatamento histórico.
+      operationId: getSamplesProdes
+      security: []
+      responses:
+        '200':
+          description: 10 samples retornados
+          content:
+            application/json:
+              schema:
+                type: object
 
 components:
   securitySchemes:
