@@ -7,6 +7,7 @@ import { swaggerPlugin } from './plugins/swagger.js';
 import { healthRoutes } from './routes/health.js';
 import { checkRoutes } from './routes/check.js';
 import { sourcesRoutes } from './routes/sources.js';
+import samplesRoutes from './routes/samples.js';
 
 export async function createServer() {
   const app = Fastify({
@@ -27,6 +28,7 @@ export async function createServer() {
   await app.register(healthRoutes);
   await app.register(checkRoutes);
   await app.register(sourcesRoutes);
+  await app.register(samplesRoutes);
 
   // Root endpoint
   app.get('/', async () => {
@@ -38,7 +40,8 @@ export async function createServer() {
       endpoints: {
         health: '/health',
         check: 'POST /check',
-        sources: '/sources'
+        sources: '/sources',
+        samples: '/samples/*'
       }
     };
   });
