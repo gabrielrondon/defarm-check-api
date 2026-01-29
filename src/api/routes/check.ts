@@ -2,10 +2,12 @@ import { FastifyInstance } from 'fastify';
 import { CheckRequestSchema } from '../../types/input.js';
 import { orchestratorService } from '../../services/orchestrator.js';
 import { ValidationError } from '../../utils/errors.js';
+import { authenticateApiKey } from '../middleware/auth.js';
 
 export async function checkRoutes(app: FastifyInstance) {
   // POST /check - Executar nova verificação
   app.post('/check', {
+    preHandler: authenticateApiKey,
     schema: {
       tags: ['check'],
       description: 'Execute compliance check',

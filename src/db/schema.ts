@@ -102,3 +102,24 @@ export const ibamaEmbargoesIdx = {
   documentIdx: 'idx_ibama_embargoes_document',
   typeIdx: 'idx_ibama_embargoes_type'
 };
+
+// Tabela de API Keys para autenticação
+export const apiKeys = pgTable('api_keys', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(), // Nome/descrição da key (ex: "defarm-core production")
+  keyPrefix: varchar('key_prefix', { length: 16 }).notNull(), // Primeiros 12 chars da key (para busca rápida)
+  keyHash: varchar('key_hash', { length: 255 }).notNull().unique(), // Hash bcrypt da API key
+  isActive: boolean('is_active').default(true).notNull(),
+  rateLimit: integer('rate_limit').default(100).notNull(), // Requests por minuto
+  permissions: jsonb('permissions').$type<string[]>().default(['read']), // ["read", "write", "admin"]
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }), // Opcional: data de expiração
+  createdBy: varchar('created_by', { length: 100 }), // Quem criou (email, etc)
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+});
+
+export const apiKeysIdx = {
+  keyHashIdx: 'idx_api_keys_key_hash',
+  isActiveIdx: 'idx_api_keys_is_active'
+};

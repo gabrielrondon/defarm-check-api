@@ -11,6 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx scripts/seed-sources.ts",
+    "create-api-key": "tsx scripts/create-api-key.ts",
     "data:lista-suja": "curl -L 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/cadastro_de_empregadores.xlsx' -o data/lista_suja.xlsx && tsx scripts/convert-lista-suja.ts",
     "data:ibama": "curl -L 'https://dadosabertos.ibama.gov.br/dados/SIFISC/termo_embargo/termo_embargo/termo_embargo_csv.zip' -o data/ibama_embargos.zip && cd data && unzip -o ibama_embargos.zip && cd .. && tsx scripts/convert-ibama-embargos.ts",
     "data:prodes": "tsx scripts/seed-prodes-sample.ts",
@@ -36,6 +37,7 @@
     "@fastify/swagger": "^8.14.0",
     "@fastify/swagger-ui": "^3.0.0",
     "axios": "^1.7.7",
+    "bcryptjs": "^3.0.3",
     "csv-parse": "^6.1.0",
     "dotenv": "^16.4.5",
     "drizzle-orm": "^0.44.5",
@@ -49,6 +51,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20.14.10",
     "@types/pg": "^8.11.6",
     "@types/uuid": "^10.0.0",
