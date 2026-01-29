@@ -36,7 +36,8 @@
       "Bash(DATABASE_URL=\"postgresql://postgres:gA22AgAddGceGg55Dd62d6b3EaD32bg5@caboose.proxy.rlwy.net:18740/railway\" tsx scripts/seed-lista-suja-db.ts:*)",
       "Bash(DATABASE_URL=\"postgresql://postgres:gA22AgAddGceGg55Dd62d6b3EaD32bg5@caboose.proxy.rlwy.net:18740/railway\" npx tsx:*)",
       "Bash(DATABASE_URL=\"postgresql://postgres:gA22AgAddGceGg55Dd62d6b3EaD32bg5@caboose.proxy.rlwy.net:18740/railway\" timeout 60 npx tsx:*)",
-      "Bash(npm run create-api-key:*)"
+      "Bash(npm run create-api-key:*)",
+      "Bash(DATABASE_URL=\"postgresql://postgres:gA22AgAddGceGg55Dd62d6b3EaD32bg5@caboose.proxy.rlwy.net:18740/railway\" npm run create-api-key:*)"
     ]
   }
 }

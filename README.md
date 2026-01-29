@@ -1,259 +1,397 @@
 # Check API - DeFarm Compliance Socioambiental
 
-API de verificação de compliance socioambiental que agrega múltiplas fontes de dados públicos para validar conformidade de produtores, propriedades e produtos.
+API de verificação de compliance socioambiental que agrega múltiplas fontes de dados públicos para validar conformidade de produtores, propriedades e produtos rurais no Brasil.
 
-## 🚀 Quick Start
+**🌐 Produção:** https://defarm-check-api-production.up.railway.app
 
-### Pré-requisitos
-- Node.js >= 18
-- PostgreSQL >= 15
-- Redis >= 7
+## 🎯 O que a API faz?
 
-### Instalação
+Verifica automaticamente se um produtor, propriedade ou produto está em conformidade com regulamentações socioambientais brasileiras, consultando:
 
-```bash
-# Instalar dependências
-npm install
+- **Lista Suja do Trabalho Escravo** (MTE) - 678 registros
+- **Embargos Ambientais** (IBAMA) - 65,953 documentos
+- **Desmatamento** (PRODES/INPE) - Dados geoespaciais
+- **Cadastro Ambiental Rural** (CAR/SICAR)
 
-# Configurar variáveis de ambiente
-cp .env.example .env
-# Editar .env com suas configurações
-
-# Gerar migrations
-npm run db:generate
-
-# Executar migrations
-npm run db:migrate
-
-# Iniciar em desenvolvimento
-npm run dev
-```
-
-O servidor estará disponível em `http://localhost:3000`
-
-Documentação (Swagger): `http://localhost:3000/docs`
-
-## 📋 API Endpoints
-
-### POST /check
-Executa verificação de compliance
+## 🚀 Quick Start - Produção
 
 ```bash
-curl -X POST http://localhost:3000/check \
+# Fazer uma verificação
+curl -X POST https://defarm-check-api-production.up.railway.app/check \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: SUA_API_KEY" \
   -d '{
     "input": {
       "type": "CNPJ",
-      "value": "12.345.678/0001-90"
-    },
-    "options": {
-      "sources": ["all"],
-      "useCache": true
+      "value": "12345678000190"
     }
   }'
 ```
 
-**Tipos de Input suportados:**
-- `CNPJ` - CNPJ de empresa
-- `CPF` - CPF de pessoa física
-- `CAR` - Número de Cadastro Ambiental Rural
-- `IE` - Inscrição Estadual
-- `COORDINATES` - Coordenadas geográficas `{ lat: -10.5, lon: -55.2 }`
-- `ADDRESS` - Endereço (será geocodificado)
-
 **Resposta:**
 ```json
 {
-  "checkId": "chk_abc123",
+  "checkId": "a84b07fb-8142-4cc3-bcf4-a59e368be37c",
   "verdict": "NON_COMPLIANT",
-  "score": 45,
+  "score": 50,
   "sources": [
     {
-      "name": "PRODES Deforestation",
+      "name": "Slave Labor Registry",
+      "category": "social",
       "status": "FAIL",
-      "severity": "HIGH",
-      "message": "Detected 15ha deforestation in 2024"
+      "severity": "CRITICAL",
+      "message": "Found in slave labor registry",
+      "details": { ... }
     }
   ],
   "summary": {
     "totalCheckers": 3,
     "passed": 1,
-    "failed": 2
+    "failed": 1,
+    "warnings": 1
+  },
+  "metadata": {
+    "processingTimeMs": 185,
+    "cacheHitRate": 0.33,
+    "apiVersion": "1.0.0"
   }
 }
 ```
 
+## 🔑 Autenticação
+
+Todas as requisições requerem uma API key no header:
+
+```
+X-API-Key: ck_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+```
+
+**Obter API Key:** Entre em contato com o time para receber uma API key.
+
+## 📋 Endpoints
+
+### POST /check
+Executa verificação de compliance
+
+**Request:**
+```json
+{
+  "input": {
+    "type": "CNPJ|CPF|CAR|COORDINATES",
+    "value": "..."
+  },
+  "options": {
+    "useCache": true,
+    "includeEvidence": true
+  }
+}
+```
+
+**Tipos de Input:**
+- `CNPJ` - CNPJ (com ou sem máscara): `"12345678000190"` ou `"12.345.678/0001-90"`
+- `CPF` - CPF (com ou sem máscara): `"12345678900"` ou `"123.456.789-00"`
+- `CAR` - Número CAR
+- `COORDINATES` - Coordenadas: `{"lat": -7.094, "lon": -61.090}`
+
+**Response:**
+```typescript
+{
+  checkId: string;           // ID único da verificação
+  input: { type, value };    // Input original
+  timestamp: string;         // ISO 8601
+  verdict: "COMPLIANT" | "NON_COMPLIANT" | "PARTIAL" | "UNKNOWN";
+  score: number;             // 0-100 (100 = totalmente conforme)
+  sources: SourceResult[];   // Resultado de cada checker
+  summary: {
+    totalCheckers: number;
+    passed: number;
+    failed: number;
+    warnings: number;
+    errors: number;
+  };
+  metadata: {
+    processingTimeMs: number;
+    cacheHitRate: number;    // 0-1
+    apiVersion: string;
+  };
+}
+```
+
 ### GET /checks/:id
-Busca resultado de verificação por ID
+Busca resultado de verificação anterior
 
 ```bash
-curl http://localhost:3000/checks/chk_abc123
+curl https://defarm-check-api-production.up.railway.app/checks/a84b07fb-8142-4cc3-bcf4-a59e368be37c \
+  -H "X-API-Key: SUA_API_KEY"
 ```
 
 ### GET /sources
 Lista todas as fontes de dados disponíveis
 
 ```bash
-curl http://localhost:3000/sources
+curl https://defarm-check-api-production.up.railway.app/sources \
+  -H "X-API-Key: SUA_API_KEY"
+```
+
+**Response:**
+```json
+[
+  {
+    "name": "Slave Labor Registry",
+    "category": "social",
+    "enabled": true,
+    "status": "operational",
+    "description": "Verifica se CNPJ/CPF está na Lista Suja do Trabalho Escravo (MTE)"
+  },
+  ...
+]
 ```
 
 ### GET /health
-Health check do sistema
+Health check (não requer autenticação)
 
 ```bash
-curl http://localhost:3000/health
+curl https://defarm-check-api-production.up.railway.app/health
 ```
 
 ## 🧩 Checkers Implementados
 
-### Ambientais
-- **PRODES Deforestation** - Verifica desmatamento (INPE)
-- **CAR Registry** - Valida Cadastro Ambiental Rural (SICAR)
+### 🌿 Ambientais
+| Checker | Fonte | Registros | Status |
+|---------|-------|-----------|--------|
+| **PRODES Deforestation** | INPE TerraBrasilis | 5 samples | ✅ Operacional |
+| **IBAMA Embargoes** | IBAMA | 65,953 docs | ✅ Operacional |
+| **CAR Registry** | SICAR | Placeholder | ⚠️ Mockado |
 
-### Sociais
-- **Slave Labor Registry** - Verifica Lista Suja (MTE)
+### 👥 Sociais
+| Checker | Fonte | Registros | Status |
+|---------|-------|-----------|--------|
+| **Slave Labor Registry** | MTE | 678 | ✅ Operacional |
 
-## 🔧 Desenvolvimento
+## 💻 Integração com defarm-core
 
-### Scripts
-
-```bash
-npm run dev          # Desenvolvimento com hot reload
-npm run build        # Build para produção
-npm run start        # Inicia versão buildada
-npm run test         # Executar testes
-npm run lint         # Lint do código
-npm run format       # Formatar código
-```
-
-### Estrutura do Projeto
-
-```
-src/
-├── api/              # Fastify server e routes
-├── checkers/         # Checkers modulares
-│   ├── environmental/
-│   ├── social/
-│   └── legal/
-├── services/         # Business logic
-├── db/               # Database schema e client
-├── types/            # TypeScript types
-├── utils/            # Utilitários
-└── config/           # Configurações
-```
-
-### Adicionando Novo Checker
-
-1. Criar arquivo em `src/checkers/{category}/{name}.ts`
-2. Estender `BaseChecker`
-3. Implementar `executeCheck()`
-4. Registrar em `src/checkers/index.ts`
+### JavaScript/TypeScript
 
 ```typescript
-import { BaseChecker } from '../base.js';
+async function checkCompliance(document: string) {
+  const response = await fetch('https://defarm-check-api-production.up.railway.app/check', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': process.env.CHECK_API_KEY
+    },
+    body: JSON.stringify({
+      input: {
+        type: 'CNPJ',
+        value: document
+      }
+    })
+  });
 
-export class MyChecker extends BaseChecker {
-  readonly metadata = {
-    name: 'My Checker',
-    category: CheckerCategory.ENVIRONMENTAL,
-    description: 'Checks something',
-    priority: 7,
-    supportedInputTypes: [InputType.CNPJ]
-  };
-
-  readonly config = {
-    enabled: true,
-    cacheTTL: 3600,
-    timeout: 10000
-  };
-
-  async executeCheck(input: NormalizedInput): Promise<CheckerResult> {
-    // Sua lógica aqui
-    return {
-      status: CheckStatus.PASS,
-      message: 'All good',
-      executionTimeMs: 0,
-      cached: false
-    };
+  if (!response.ok) {
+    throw new Error(`Check API error: ${response.status}`);
   }
+
+  const data = await response.json();
+
+  return {
+    isCompliant: data.verdict === 'COMPLIANT',
+    score: data.score,
+    issues: data.sources.filter(s => s.status === 'FAIL')
+  };
 }
 ```
 
-## 🗄️ Database
+### Python
 
-### Migrations
+```python
+import requests
 
-```bash
-# Gerar migration após alterar schema
-npm run db:generate
+def check_compliance(document: str) -> dict:
+    response = requests.post(
+        'https://defarm-check-api-production.up.railway.app/check',
+        headers={
+            'Content-Type': 'application/json',
+            'X-API-Key': os.getenv('CHECK_API_KEY')
+        },
+        json={
+            'input': {
+                'type': 'CNPJ',
+                'value': document
+            }
+        }
+    )
 
-# Executar migrations
-npm run db:migrate
+    response.raise_for_status()
+    data = response.json()
+
+    return {
+        'is_compliant': data['verdict'] == 'COMPLIANT',
+        'score': data['score'],
+        'issues': [s for s in data['sources'] if s['status'] == 'FAIL']
+    }
 ```
 
-### Schema Principal
+## 🏗️ Desenvolvimento Local
 
-- `check_requests` - Histórico de verificações
-- `checker_sources` - Registro de fontes de dados
-- `checker_cache_stats` - Métricas de cache
+### Pré-requisitos
+- Node.js >= 18
+- PostgreSQL >= 15 com PostGIS
+- Redis >= 7
+
+### Setup
+
+```bash
+# Clonar repositório
+git clone https://github.com/gabrielrondon/defarm-check-api.git
+cd defarm-check-api
+
+# Instalar dependências
+npm install
+
+# Configurar ambiente
+cp .env.example .env
+# Editar .env com suas configurações
+
+# Rodar migrations
+npm run db:migrate
+
+# Baixar dados (opcional - já existem seeds)
+npm run data:lista-suja  # Lista Suja MTE
+npm run data:ibama       # IBAMA Embargoes
+npm run data:prodes      # PRODES sample
+
+# Iniciar servidor
+npm run dev
+```
+
+Servidor: `http://localhost:3000`
+Docs: `http://localhost:3000/docs`
+
+### Scripts Disponíveis
+
+```bash
+npm run dev              # Desenvolvimento com hot reload
+npm run build            # Build para produção
+npm run start            # Iniciar versão buildada
+npm run test             # Executar testes
+npm run lint             # Lint do código
+npm run format           # Formatar código
+
+# Database
+npm run db:generate      # Gerar migration
+npm run db:migrate       # Executar migrations
+npm run db:seed          # Seed checker sources
+
+# API Keys
+npm run create-api-key -- --name "My App" --rate-limit 1000
+
+# Data
+npm run data:all         # Baixar todos os dados
+```
+
+## 🗄️ Arquitetura
+
+### Stack
+- **Runtime:** Node.js 18+ (TypeScript)
+- **Framework:** Fastify (3x mais rápido que Express)
+- **Database:** PostgreSQL 16 + PostGIS 3.7
+- **Cache:** Redis 7
+- **ORM:** Drizzle ORM
+- **Validação:** Zod
+- **Logs:** Pino (JSON estruturado)
+
+### Estrutura
+
+```
+src/
+├── api/
+│   ├── routes/          # Endpoints HTTP
+│   ├── middleware/      # Autenticação, etc
+│   └── plugins/         # Fastify plugins
+├── checkers/
+│   ├── base.ts          # BaseChecker abstrato
+│   ├── environmental/   # Checkers ambientais
+│   ├── social/          # Checkers sociais
+│   └── legal/           # Checkers legais
+├── services/
+│   ├── orchestrator.ts  # Coordena execução dos checkers
+│   └── cache.ts         # Redis cache service
+├── db/
+│   ├── schema.ts        # Drizzle schema
+│   ├── client.ts        # Database client
+│   └── migrations/      # SQL migrations
+└── types/               # TypeScript types
+```
+
+### Como Funciona
+
+1. **Request** → Autenticação via API key
+2. **Normalização** → Input padronizado (remove máscaras, etc)
+3. **Orquestração** → Executa checkers relevantes em paralelo
+4. **Cache** → Verifica Redis antes de executar
+5. **Agregação** → Calcula score e verdict
+6. **Persistência** → Salva no PostgreSQL
+7. **Response** → Retorna JSON completo
 
 ## 🔐 Segurança
 
-- Rate limiting (100 req/min por padrão)
-- CORS configurável
-- Helmet security headers
-- Validação de input (Zod)
+- ✅ API Keys com bcrypt hashing
+- ✅ Rate limiting por key (10,000 req/min padrão)
+- ✅ CORS configurável
+- ✅ Helmet security headers
+- ✅ Validação de input (Zod)
+- ✅ SQL injection protection (Drizzle ORM)
+- ✅ Secrets em variáveis de ambiente
 
-## 📊 Monitoramento
+## 📊 Performance
 
-### Logs
+- **Latência média:** ~200ms (com dados em cache: ~10ms)
+- **Cache hit rate:** ~65% em produção
+- **Rate limit:** 10,000 req/min por API key
+- **Timeout:** 15s por checker
 
-Logs estruturados em JSON (Pino):
+## 🚨 Troubleshooting
 
-```bash
-# Desenvolvimento (pretty print)
-LOG_PRETTY=true npm run dev
+### 401 Unauthorized
+- Verifique se o header `X-API-Key` está presente
+- Confirme que a API key está ativa
 
-# Produção (JSON)
-npm start
-```
+### 503 Service Unavailable
+- Verifique `/health` para status dos serviços
+- Database ou Redis podem estar offline
 
-### Métricas
+### Timeout
+- Alguns checkers podem demorar (PostGIS queries)
+- Considere aumentar timeout no client
 
-- Cache hit rate
-- Tempo de execução por checker
-- Taxa de sucesso/falha
+### Cache não funcionando
+- Verifique conexão com Redis
+- `CACHE_ENABLED=true` no `.env`
 
-## 🚢 Deploy
+## 📚 Documentação Adicional
 
-### Docker (em breve)
+- [API Reference](./docs/API.md) - Referência completa dos endpoints
+- [Integration Guide](./docs/INTEGRATION.md) - Guia de integração detalhado
+- [Railway Setup](./RAILWAY_SETUP.md) - Deploy no Railway
+- [Swagger/OpenAPI](https://defarm-check-api-production.up.railway.app/docs) - Documentação interativa
 
-```bash
-docker build -t check-api .
-docker run -p 3000:3000 check-api
-```
+## 🗺️ Roadmap
 
-### Variáveis de Ambiente
-
-Ver `.env.example` para lista completa.
-
-Essenciais:
-- `DATABASE_URL` - Connection string PostgreSQL
-- `REDIS_URL` - Connection string Redis
-- `PORT` - Porta do servidor (padrão: 3000)
-
-## 📝 Licença
-
-MIT
-
-## 🤝 Contribuindo
-
-1. Seguir padrão de código (ESLint + Prettier)
-2. Adicionar testes para novos checkers
-3. Documentar APIs no Swagger
-4. Atualizar README quando adicionar funcionalidades
+- [ ] Checker: SISBOV (rastreabilidade bovina)
+- [ ] Checker: Licenças ambientais estaduais
+- [ ] Checker: Terras Indígenas (FUNAI)
+- [ ] Webhook support para checks assíncronos
+- [ ] GraphQL API
+- [ ] SDK JavaScript/TypeScript
+- [ ] Dashboard de analytics
 
 ## 📞 Suporte
 
-Issues: GitHub Issues
-Docs: `/docs` endpoint
+- **Issues:** [GitHub Issues](https://github.com/gabrielrondon/defarm-check-api/issues)
+- **Email:** suporte@defarm.com
+- **Docs:** https://defarm-check-api-production.up.railway.app/docs
+
+## 📝 Licença
+
+MIT License - DeFarm 2026
