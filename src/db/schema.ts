@@ -57,6 +57,22 @@ export const prodesDeforestation = pgTable('prodes_deforestation', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 });
 
+// Tabela de alertas DETER (desmatamento em tempo real - INPE)
+// Nota: geometria será gerenciada via SQL direto (PostGIS)
+export const deterAlerts = pgTable('deter_alerts', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  alertDate: date('alert_date').notNull(), // Data do alerta
+  areaHa: integer('area_ha').notNull(), // Área desmatada/degradada
+  state: varchar('state', { length: 2 }),
+  municipality: varchar('municipality', { length: 255 }),
+  classname: varchar('classname', { length: 50 }), // DESMATAMENTO_VEG, DEGRADACAO, etc
+  sensor: varchar('sensor', { length: 20 }), // LANDSAT_8, SENTINEL_2, etc
+  pathRow: varchar('path_row', { length: 10 }), // Path/Row do satélite
+  source: varchar('source', { length: 20 }).default('DETER-B'),
+  // geometria será adicionada via SQL: geometry(MULTIPOLYGON, 4326)
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
 // Tabela Lista Suja do Trabalho Escravo (MTE)
 export const listaSuja = pgTable('lista_suja', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -101,6 +117,12 @@ export const listaSujaIdx = {
 export const ibamaEmbargoesIdx = {
   documentIdx: 'idx_ibama_embargoes_document',
   typeIdx: 'idx_ibama_embargoes_type'
+};
+
+export const deterAlertsIdx = {
+  alertDateIdx: 'idx_deter_alerts_alert_date',
+  stateIdx: 'idx_deter_alerts_state',
+  classnameIdx: 'idx_deter_alerts_classname'
 };
 
 // Tabela de API Keys para autenticação
