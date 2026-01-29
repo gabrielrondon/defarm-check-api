@@ -59,9 +59,7 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
         document,
         name,
         embargo_count,
-        total_area_ha,
-        municipalities,
-        states
+        total_area_ha
       FROM ibama_embargoes
       WHERE embargo_count > 0
       ORDER BY embargo_count DESC, RANDOM()
@@ -76,8 +74,6 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
         name: r.name,
         embargoCount: r.embargo_count,
         totalAreaHa: r.total_area_ha,
-        municipalities: r.municipalities,
-        states: r.states,
         testUrl: `POST /check {"input":{"type":"CNPJ","value":"${r.document}"}}`
       }))
     };
@@ -308,7 +304,7 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
 
     // IBAMA
     const ibama = await db.execute(sql`
-      SELECT document, name, embargo_count
+      SELECT document, name, embargo_count, type
       FROM ibama_embargoes
       WHERE embargo_count > 0
       ORDER BY RANDOM()
@@ -392,7 +388,7 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
         document: ibama.rows[0].document,
         name: ibama.rows[0].name,
         embargoCount: ibama.rows[0].embargo_count,
-        testUrl: `POST /check {"input":{"type":"CNPJ","value":"${ibama.rows[0].document}"}}`
+        testUrl: `POST /check {"input":{"type":"${ibama.rows[0].type}","value":"${ibama.rows[0].document}"}}`
       } : null,
       terrasIndigenas: ti.rows[0] ? {
         name: ti.rows[0].name,
