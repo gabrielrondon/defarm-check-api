@@ -9,12 +9,8 @@ import {
 } from '../../types/checker.js';
 import { NormalizedInput, InputType } from '../../types/input.js';
 import { logger } from '../../utils/logger.js';
-
-// Mock data - em produção viria de consulta PostGIS no PRODES/DETER
-const mockDeforestationData = new Map([
-  ['-10.5,-55.2', { detected: true, area_ha: 15.3, year: 2024 }],
-  ['-12.0,-50.0', { detected: false }]
-]);
+import { db } from '../../db/client.js';
+import { sql } from 'drizzle-orm';
 
 export class DeforestationChecker extends BaseChecker {
   readonly metadata: CheckerMetadata = {
@@ -39,33 +35,27 @@ export class DeforestationChecker extends BaseChecker {
     }
 
     try {
-      await this.simulateAPICall();
+      // Query PostGIS: verificar se coordenadas estão em área de desmatamento
+      const result = await db.execute<{
+        municipality: string;
+        state: string;
+        area_ha: number;
+        year: number;
+        path_row: string;
+      }>(sql`
+        SELECT municipality, state, area_ha, year, path_row
+        FROM prodes_deforestation
+        WHERE ST_Contains(
+          geometry,
+          ST_SetSRID(ST_MakePoint(${input.coordinates.lon}, ${input.coordinates.lat}), 4326)
+        )
+        ORDER BY year DESC
+        LIMIT 1
+      `);
 
-      // Em produção: query PostGIS
-      // const result = await this.queryPostGIS(input.coordinates);
+      if (result.rows.length > 0) {
+        const data = result.rows[0];
 
-      const key = `${input.coordinates.lat},${input.coordinates.lon}`;
-      const data = mockDeforestationData.get(key);
-
-      if (!data) {
-        return {
-          status: CheckStatus.PASS,
-          message: 'No deforestation detected in this area',
-          details: {
-            coordinates: input.coordinates,
-            checkedAt: new Date().toISOString()
-          },
-          evidence: {
-            dataSource: 'INPE PRODES/DETER',
-            url: 'http://terrabrasilis.dpi.inpe.br/',
-            lastUpdate: '2025-12-01'
-          },
-          executionTimeMs: 0,
-          cached: false
-        };
-      }
-
-      if (data.detected) {
         return {
           status: CheckStatus.FAIL,
           severity: Severity.HIGH,
@@ -73,11 +63,14 @@ export class DeforestationChecker extends BaseChecker {
           details: {
             area_ha: data.area_ha,
             year: data.year,
+            municipality: data.municipality,
+            state: data.state,
+            path_row: data.path_row,
             coordinates: input.coordinates,
-            recommendation: 'Environmental compliance review required'
+            recommendation: 'HIGH: Deforestation detected at this location. Environmental compliance review required.'
           },
           evidence: {
-            dataSource: 'INPE PRODES',
+            dataSource: 'INPE PRODES - Programa de Monitoramento do Desmatamento',
             url: 'http://terrabrasilis.dpi.inpe.br/',
             lastUpdate: '2025-12-01'
           },
@@ -88,7 +81,16 @@ export class DeforestationChecker extends BaseChecker {
 
       return {
         status: CheckStatus.PASS,
-        message: 'No deforestation detected',
+        message: 'No deforestation detected at this location',
+        details: {
+          coordinates: input.coordinates,
+          checkedAt: new Date().toISOString()
+        },
+        evidence: {
+          dataSource: 'INPE PRODES',
+          url: 'http://terrabrasilis.dpi.inpe.br/',
+          lastUpdate: '2025-12-01'
+        },
         executionTimeMs: 0,
         cached: false
       };
@@ -96,20 +98,6 @@ export class DeforestationChecker extends BaseChecker {
       throw new Error(`Failed to check deforestation data: ${(err as Error).message}`);
     }
   }
-
-  private async simulateAPICall(): Promise<void> {
-    await new Promise(resolve => setTimeout(resolve, 200));
-  }
-
-  // Em produção: implementar query PostGIS
-  // private async queryPostGIS(coords: Coordinates): Promise<any> {
-  //   const query = `
-  //     SELECT area_ha, year FROM prodes_deforestation
-  //     WHERE ST_Contains(geometry, ST_SetSRID(ST_MakePoint($1, $2), 4326))
-  //     ORDER BY year DESC LIMIT 1
-  //   `;
-  //   return await db.query(query, [coords.lon, coords.lat]);
-  // }
 }
 
 export default new DeforestationChecker();

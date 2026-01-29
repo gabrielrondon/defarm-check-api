@@ -43,6 +43,20 @@ export const checkerCacheStats = pgTable('checker_cache_stats', {
   avgExecutionTimeMs: integer('avg_execution_time_ms')
 });
 
+// Tabela de desmatamento PRODES (dados geoespaciais)
+// Nota: geometria será gerenciada via SQL direto (PostGIS)
+export const prodesDeforestation = pgTable('prodes_deforestation', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  year: integer('year').notNull(),
+  areaHa: integer('area_ha').notNull(),
+  state: varchar('state', { length: 2 }),
+  municipality: varchar('municipality', { length: 255 }),
+  pathRow: varchar('path_row', { length: 10 }),
+  source: varchar('source', { length: 50 }).default('PRODES'),
+  // geometria será adicionada via SQL: geometry(MULTIPOLYGON, 4326)
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
 // Índices para performance
 export const checkRequestsIdx = {
   inputTypeIdx: 'idx_check_requests_input_type',

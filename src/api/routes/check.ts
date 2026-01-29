@@ -37,8 +37,61 @@ export async function checkRoutes(app: FastifyInstance) {
           type: 'object',
           properties: {
             checkId: { type: 'string' },
+            input: {
+              type: 'object',
+              properties: {
+                type: { type: 'string' },
+                value: {}
+              }
+            },
+            timestamp: { type: 'string' },
             verdict: { type: 'string' },
-            score: { type: 'number' }
+            score: { type: 'number' },
+            sources: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  category: { type: 'string' },
+                  status: { type: 'string' },
+                  severity: { type: 'string' },
+                  message: { type: 'string' },
+                  details: { type: 'object' },
+                  evidence: {
+                    type: 'object',
+                    properties: {
+                      dataSource: { type: 'string' },
+                      url: { type: 'string' },
+                      lastUpdate: { type: 'string' },
+                      raw: {}
+                    }
+                  },
+                  executionTimeMs: { type: 'number' },
+                  cached: { type: 'boolean' }
+                }
+              }
+            },
+            summary: {
+              type: 'object',
+              properties: {
+                totalCheckers: { type: 'number' },
+                passed: { type: 'number' },
+                failed: { type: 'number' },
+                warnings: { type: 'number' },
+                errors: { type: 'number' },
+                notApplicable: { type: 'number' }
+              }
+            },
+            metadata: {
+              type: 'object',
+              properties: {
+                processingTimeMs: { type: 'number' },
+                cacheHitRate: { type: 'number' },
+                apiVersion: { type: 'string' },
+                timestamp: { type: 'string' }
+              }
+            }
           }
         }
       }
