@@ -10,11 +10,14 @@ info:
     **Fontes de dados:**
     - Lista Suja do Trabalho Escravo (MTE) - 678 registros
     - Embargos Ambientais (IBAMA) - 65,953 documentos
-    - Desmatamento (PRODES/INPE) - Dados geoespaciais
-    - Cadastro Ambiental Rural (CAR/SICAR) - Em desenvolvimento
+    - Desmatamento Histórico (PRODES/INPE) - Dados geoespaciais anuais
+    - Alertas de Desmatamento em Tempo Real (DETER/INPE) - Alertas diários últimos 90 dias
+    - Terras Indígenas (FUNAI) - Todas TIs demarcadas no Brasil
+    - Unidades de Conservação (ICMBio) - Todas UCs federais, estaduais e municipais
+    - Cadastro Ambiental Rural (CAR/SICAR) - Cobertura nacional 27 estados
 
     **Documentação completa:** https://github.com/gabrielrondon/defarm-check-api
-  version: 1.0.0
+  version: 2.0.0
   contact:
     name: DeFarm Support
     email: suporte@defarm.com
@@ -207,6 +210,117 @@ paths:
                           dataSource: "INPE PRODES - Programa de Monitoramento do Desmatamento"
                           url: "http://terrabrasilis.dpi.inpe.br/"
                           lastUpdate: "2025-12-01"
+                deter_alert:
+                  summary: Alerta recente de desmatamento (DETER)
+                  value:
+                    verdict: "NON_COMPLIANT"
+                    score: 0
+                    sources:
+                      - name: "DETER Real-Time Alerts"
+                        category: "environmental"
+                        status: "FAIL"
+                        severity: "CRITICAL"
+                        message: "Recent deforestation alert detected: DESMATAMENTO_VEG (3 days ago)"
+                        details:
+                          alertDate: "2026-01-26"
+                          daysAgo: 3
+                          areaHa: 42.5
+                          municipality: "Lábrea"
+                          state: "AM"
+                          classname: "DESMATAMENTO_VEG"
+                          sensor: "WFI"
+                          pathRow: "231/066"
+                          coordinates:
+                            lat: -7.0945
+                            lon: -61.089
+                          recommendation: "CRITICAL: Recent deforestation detected. This location has been flagged for illegal deforestation in the last week."
+                        evidence:
+                          dataSource: "INPE DETER-B - Sistema de Detecção de Desmatamento em Tempo Real"
+                          url: "http://terrabrasilis.dpi.inpe.br/"
+                          lastUpdate: "2026-01-29"
+                indigenous_land:
+                  summary: Sobreposição com Terra Indígena
+                  value:
+                    verdict: "NON_COMPLIANT"
+                    score: 0
+                    sources:
+                      - name: "Indigenous Lands"
+                        category: "environmental"
+                        status: "FAIL"
+                        severity: "CRITICAL"
+                        message: "Location overlaps with Indigenous Land: Yanomami"
+                        details:
+                          terraIndigena: "Yanomami"
+                          etnia: "Yanomami"
+                          phase: "Homologada"
+                          phaseDescription: "officially recognized by Presidential decree"
+                          areaHa: 9664975
+                          municipality: "Alto Alegre"
+                          state: "RR"
+                          coordinates:
+                            lat: 2.5
+                            lon: -63.8
+                          recommendation: "CRITICAL: This location is within Indigenous Land. Economic activities strictly prohibited by law."
+                        evidence:
+                          dataSource: "FUNAI - Fundação Nacional dos Povos Indígenas"
+                          url: "https://www.gov.br/funai/pt-br/atuacao/terras-indigenas"
+                          lastUpdate: "2026-01-29"
+                conservation_unit:
+                  summary: Sobreposição com Unidade de Conservação
+                  value:
+                    verdict: "NON_COMPLIANT"
+                    score: 0
+                    sources:
+                      - name: "Conservation Units"
+                        category: "environmental"
+                        status: "FAIL"
+                        severity: "CRITICAL"
+                        message: "Location overlaps with Conservation Unit: Parque Nacional do Jaú"
+                        details:
+                          unidadeConservacao: "Parque Nacional do Jaú"
+                          category: "Parque Nacional"
+                          group: "Proteção Integral"
+                          groupDescription: "Full Protection - economic activities strictly prohibited"
+                          areaHa: 2272000
+                          municipality: "Novo Airão"
+                          state: "AM"
+                          sphere: "Federal"
+                          coordinates:
+                            lat: -1.9
+                            lon: -61.6
+                          recommendation: "CRITICAL: Full Protection Conservation Unit. Economic activities strictly prohibited."
+                        evidence:
+                          dataSource: "ICMBio - Instituto Chico Mendes de Conservação da Biodiversidade"
+                          url: "https://www.gov.br/icmbio/pt-br/assuntos/biodiversidade/unidade-de-conservacao"
+                          lastUpdate: "2026-01-29"
+                car_check:
+                  summary: Propriedade com CAR cancelado
+                  value:
+                    verdict: "NON_COMPLIANT"
+                    score: 25
+                    sources:
+                      - name: "CAR - Cadastro Ambiental Rural"
+                        category: "environmental"
+                        status: "FAIL"
+                        severity: "HIGH"
+                        message: "Location has cancelado CAR registration: MT-5102504-0123456789ABCDEF"
+                        details:
+                          carNumber: "MT-5102504-0123456789ABCDEF"
+                          carStatus: "CANCELADO"
+                          ownerDocument: "12345678000190"
+                          ownerName: "Fazenda Exemplo Ltda"
+                          propertyName: "Fazenda São João"
+                          areaHa: 1250
+                          municipality: "Lucas do Rio Verde"
+                          state: "MT"
+                          coordinates:
+                            lat: -13.05
+                            lon: -55.91
+                          recommendation: "CRITICAL: CAR cancelled. Property is irregular according to Forest Code."
+                        evidence:
+                          dataSource: "SICAR - Sistema Nacional de Cadastro Ambiental Rural"
+                          url: "https://www.car.gov.br/publico/imoveis/index?car=MT-5102504-0123456789ABCDEF"
+                          lastUpdate: "2026-01-29"
         '400':
           description: Bad Request - Input inválido
           content:
@@ -327,12 +441,27 @@ paths:
                   category: "environmental"
                   enabled: true
                   status: "operational"
-                  description: "Detecta desmatamento em coordenadas geográficas (INPE)"
-                - name: "CAR Registry"
+                  description: "Detecta desmatamento histórico anual em coordenadas (INPE PRODES)"
+                - name: "DETER Real-Time Alerts"
                   category: "environmental"
-                  enabled: false
-                  status: "down"
-                  description: "Verifica registro no Cadastro Ambiental Rural (em desenvolvimento)"
+                  enabled: true
+                  status: "operational"
+                  description: "Detecta alertas de desmatamento em tempo real (últimos 90 dias) - INPE DETER-B"
+                - name: "Indigenous Lands"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Verifica sobreposição com Terras Indígenas demarcadas (FUNAI)"
+                - name: "Conservation Units"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Verifica sobreposição com Unidades de Conservação (ICMBio)"
+                - name: "CAR - Cadastro Ambiental Rural"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Verifica regularização ambiental via CAR - Cobertura nacional 27 estados (SICAR)"
 
   /sources/{category}:
     get:
@@ -380,7 +509,27 @@ paths:
                   category: "environmental"
                   enabled: true
                   status: "operational"
-                  description: "Detecta desmatamento em coordenadas geográficas (INPE)"
+                  description: "Detecta desmatamento histórico anual em coordenadas (INPE PRODES)"
+                - name: "DETER Real-Time Alerts"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Detecta alertas de desmatamento em tempo real (INPE DETER-B)"
+                - name: "Indigenous Lands"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Verifica sobreposição com Terras Indígenas (FUNAI)"
+                - name: "Conservation Units"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Verifica sobreposição com Unidades de Conservação (ICMBio)"
+                - name: "CAR - Cadastro Ambiental Rural"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Verifica regularização ambiental via CAR (SICAR)"
 
   /health:
     get:
