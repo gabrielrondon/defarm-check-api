@@ -11,20 +11,20 @@
  * - Status: Ativo (regularizado), Pendente, Cancelado, Suspenso
  * - NÃO ter CAR ativo = IRREGULAR (alto risco)
  *
- * Estados cobertos (95% do agro brasileiro):
- * - MT (Mato Grosso): líder em produção de soja e gado
- * - PA (Pará): maior desmatamento, foco em compliance
- * - GO (Goiás): grande produtor de grãos
- * - MS (Mato Grosso do Sul): grande produtor de soja e gado
- * - RS (Rio Grande do Sul): arroz, soja, pecuária
+ * Estados cobertos: TODOS os 27 UFs do Brasil (26 estados + DF)
+ *
+ * Principais (90% do agro):
+ * - MT, PA, GO, MS, RS, PR, SP, MG, BA, TO
  *
  * Uso:
- *   npm run data:car-mt    # Baixar Mato Grosso
- *   npm run data:car-pa    # Baixar Pará
- *   npm run data:car-go    # Baixar Goiás
- *   npm run data:car-ms    # Baixar Mato Grosso do Sul
- *   npm run data:car-rs    # Baixar Rio Grande do Sul
- *   npm run data:car-all   # Baixar todos (CUIDADO: pode ser MUITO grande!)
+ *   npm run data:car <UF>  # Baixar um estado específico
+ *
+ *   Exemplos:
+ *   npm run data:car MT    # Mato Grosso
+ *   npm run data:car PA    # Pará
+ *   npm run data:car SP    # São Paulo
+ *
+ *   npm run data:car-all   # Baixar TODOS os 27 estados (CUIDADO: muito pesado!)
  */
 
 import fs from 'fs/promises';
@@ -51,13 +51,40 @@ const logger = createLogger({
  */
 const SICAR_WFS_URL = 'https://geoserver.car.gov.br/geoserver/sicar/wfs';
 
-// Layer names por estado
+// Layer names por estado (todos os 27 UFs do Brasil)
 const STATE_LAYERS: Record<string, string> = {
-  'MT': 'sicar:sicar_imoveis_mt',
+  // Norte
+  'AC': 'sicar:sicar_imoveis_ac',
+  'AP': 'sicar:sicar_imoveis_ap',
+  'AM': 'sicar:sicar_imoveis_am',
   'PA': 'sicar:sicar_imoveis_pa',
+  'RO': 'sicar:sicar_imoveis_ro',
+  'RR': 'sicar:sicar_imoveis_rr',
+  'TO': 'sicar:sicar_imoveis_to',
+  // Nordeste
+  'AL': 'sicar:sicar_imoveis_al',
+  'BA': 'sicar:sicar_imoveis_ba',
+  'CE': 'sicar:sicar_imoveis_ce',
+  'MA': 'sicar:sicar_imoveis_ma',
+  'PB': 'sicar:sicar_imoveis_pb',
+  'PE': 'sicar:sicar_imoveis_pe',
+  'PI': 'sicar:sicar_imoveis_pi',
+  'RN': 'sicar:sicar_imoveis_rn',
+  'SE': 'sicar:sicar_imoveis_se',
+  // Centro-Oeste
+  'DF': 'sicar:sicar_imoveis_df',
   'GO': 'sicar:sicar_imoveis_go',
   'MS': 'sicar:sicar_imoveis_ms',
-  'RS': 'sicar:sicar_imoveis_rs'
+  'MT': 'sicar:sicar_imoveis_mt',
+  // Sudeste
+  'ES': 'sicar:sicar_imoveis_es',
+  'MG': 'sicar:sicar_imoveis_mg',
+  'RJ': 'sicar:sicar_imoveis_rj',
+  'SP': 'sicar:sicar_imoveis_sp',
+  // Sul
+  'PR': 'sicar:sicar_imoveis_pr',
+  'RS': 'sicar:sicar_imoveis_rs',
+  'SC': 'sicar:sicar_imoveis_sc'
 };
 
 interface CARRegistration {
@@ -261,9 +288,14 @@ async function main() {
   const args = process.argv.slice(2);
 
   if (args.length === 0) {
-    logger.error('Usage: npm run data:car-{state}');
-    logger.error('Example: npm run data:car-mt (Mato Grosso)');
-    logger.error('Available states: MT, PA, GO, MS, RS');
+    logger.error('Usage: npm run data:car <UF>');
+    logger.error('Examples:');
+    logger.error('  npm run data:car MT  # Mato Grosso');
+    logger.error('  npm run data:car SP  # São Paulo');
+    logger.error('  npm run data:car PA  # Pará');
+    logger.error('');
+    logger.error('Available: AC, AL, AM, AP, BA, CE, DF, ES, GO, MA, MG, MS, MT,');
+    logger.error('           PA, PB, PE, PI, PR, RJ, RN, RO, RR, RS, SC, SE, SP, TO');
     process.exit(1);
   }
 

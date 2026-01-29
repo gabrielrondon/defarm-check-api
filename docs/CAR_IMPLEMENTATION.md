@@ -20,17 +20,32 @@ CAR (Cadastro Ambiental Rural) é o registro eletrônico obrigatório de todas a
 
 ## 🗺️ Estados Cobertos
 
-Nossa implementação cobre **5 estados** que representam **~95% da produção agropecuária brasileira**:
+Nossa implementação cobre **TODOS os 27 estados do Brasil** (26 estados + DF) = **100% do território nacional**.
 
-| Estado | Sigla | Produção Principal | Prioridade |
-|--------|-------|-------------------|-----------|
-| Mato Grosso | MT | Soja, gado, algodão | P0 |
-| Pará | PA | Gado, desmatamento | P0 |
-| Goiás | GO | Soja, milho, gado | P0 |
-| Mato Grosso do Sul | MS | Soja, gado, cana | P1 |
-| Rio Grande do Sul | RS | Arroz, soja, gado | P1 |
+### Estados Prioritários (90% do agro brasileiro)
 
-**Cobertura:** Centro-Oeste + Norte + Sul = 95% do compliance necessário
+| Estado | Sigla | Produção Principal | Volume CAR Estimado |
+|--------|-------|-------------------|---------------------|
+| Mato Grosso | MT | Soja, gado, algodão | ~150.000 registros |
+| Pará | PA | Gado, desmatamento | ~80.000 registros |
+| Goiás | GO | Soja, milho, gado | ~100.000 registros |
+| Mato Grosso do Sul | MS | Soja, gado, cana | ~50.000 registros |
+| Rio Grande do Sul | RS | Arroz, soja, gado | ~60.000 registros |
+| Paraná | PR | Soja, milho, frango | ~70.000 registros |
+| São Paulo | SP | Cana, laranja, café | ~80.000 registros |
+| Minas Gerais | MG | Café, gado, milho | ~90.000 registros |
+| Bahia | BA | Soja, algodão, cacau | ~60.000 registros |
+| Tocantins | TO | Soja, gado | ~40.000 registros |
+
+### Todos os Estados
+
+**Norte (7):** AC, AP, AM, PA, RO, RR, TO
+**Nordeste (9):** AL, BA, CE, MA, PB, PE, PI, RN, SE
+**Centro-Oeste (4):** DF, GO, MS, MT
+**Sudeste (4):** ES, MG, RJ, SP
+**Sul (3):** PR, RS, SC
+
+**Volume Total Estimado:** ~1-2 milhões de registros CAR
 
 ---
 
@@ -108,15 +123,17 @@ Inicialmente, pesquisamos APIs estaduais:
 ### Scripts Disponíveis
 
 ```bash
-# Estados individuais
-npm run data:car-mt    # Mato Grosso
-npm run data:car-pa    # Pará
-npm run data:car-go    # Goiás
-npm run data:car-ms    # Mato Grosso do Sul
-npm run data:car-rs    # Rio Grande do Sul
+# Estado individual (qualquer UF)
+npm run data:car MT    # Mato Grosso
+npm run data:car SP    # São Paulo
+npm run data:car BA    # Bahia
+npm run data:car <UF>  # Qualquer estado
 
-# Todos os estados (CUIDADO: pode levar horas)
+# Todos os 27 estados (CUIDADO: pode levar HORAS e baixar ~15GB)
 npm run data:car-all
+
+# Apenas estados prioritários (10 principais, ~90% do agro)
+npm run data:car-all -- --priority
 ```
 
 ### Fluxo de Download
@@ -156,14 +173,22 @@ npm run data:car-all
 - Múltiplas requests: startIndex=0, 10000, 20000, ...
 - Concatenar resultados
 
-**Volume Estimado:**
-- MT: ~150.000 registros (15 requests)
-- PA: ~80.000 registros (8 requests)
-- GO: ~100.000 registros (10 requests)
-- MS: ~50.000 registros (5 requests)
-- RS: ~60.000 registros (6 requests)
+**Volume Estimado por Estado:**
 
-**Total:** ~440.000 registros
+Estados Grandes (>10 requests):
+- MT: ~150.000 registros (15 requests)
+- MG: ~90.000 registros (9 requests)
+- GO: ~100.000 registros (10 requests)
+- SP: ~80.000 registros (8 requests)
+- PA: ~80.000 registros (8 requests)
+
+Estados Médios (5-10 requests):
+- BA, PR, RS, MS, TO: ~50-70k cada
+
+Estados Pequenos (<5 requests):
+- Demais estados: ~10-40k cada
+
+**Total Geral:** ~1-2 milhões de registros CAR para todo o Brasil
 
 ---
 
@@ -308,10 +333,11 @@ if (status === 'CANCELADO' || status === 'SUSPENSO') {
 
 **Geometrias:**
 - Tamanho médio: ~5-10 KB por polígono
-- Total estimado: ~440K registros × 7.5 KB = **3.3 GB**
+- Total estimado: ~1.5M registros × 7.5 KB = **~11 GB**
 
 **Armazenamento PostgreSQL:**
-- Com índices: ~5 GB total
+- Dados brutos: ~11 GB
+- Com índices GIST: ~16-20 GB total
 - Backup: Incremental diário, full semanal
 
 ---
@@ -378,6 +404,9 @@ Response:
 
 - [x] Task #18: CAR - Estados prioritários (MT, PA, GO)
 - [x] Task #19: CAR - Estados secundários (MS, RS)
-- [ ] Paginação para estados grandes (>10K registros)
-- [ ] Automação de atualização mensal
+- [x] **CAR - Todos os 27 estados do Brasil (cobertura completa)**
+- [x] Script download-car-all.ts (download em lote)
+- [x] Script seed-car-all.ts (seed em lote)
+- [ ] Paginação para estados grandes (>10K registros) - TODO
+- [ ] Automação de atualização mensal com cron jobs
 - [ ] Alertas via Telegram para mudanças de status
