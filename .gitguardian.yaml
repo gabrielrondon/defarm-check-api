@@ -1,0 +1,50 @@
+# GitGuardian Configuration
+# Prevents accidentally committing secrets
+
+version: 2
+
+# Paths to exclude from scanning
+paths-ignore:
+  - node_modules/
+  - dist/
+  - build/
+  - data/*.json
+  - data/*.csv
+  - "**/*.log"
+  - .env.local
+  - .env.*.local
+
+# Matches to ignore (use with caution!)
+matches-ignore:
+  # Example patterns (placeholders)
+  - name: Placeholder Redis URL
+    match: redis://default:password@
+  - name: Placeholder Database URL
+    match: postgresql://.*:password@
+  - name: Example API Key
+    match: YOUR_API_KEY
+  - name: Example passwords
+    match: YOUR_.*_PASSWORD
+
+# Custom detectors
+detectors:
+  - name: Railway Redis Credentials
+    regex: redis://default:[A-Za-z0-9]{32,}@
+    test_secrets:
+      - redis://default:xiAPMUNayRBGxVOjsDzHxLmlHlFgDGYR@redis.railway.internal:6379
+
+  - name: Railway Postgres Credentials
+    regex: postgresql://postgres:[A-Za-z0-9]{32,}@
+    test_secrets:
+      - postgresql://postgres:gA22AgAddGceGg55Dd62d6b3EaD32bg5@caboose.proxy.rlwy.net:18740/railway
+
+  - name: DeFarm API Keys
+    regex: ck_[a-f0-9]{64}
+    test_secrets:
+      - ck_056af37680464425d1f23c543515951920f9947f022e3cb5735844673edb4f12
+
+# Sensitivity settings
+minimum_occurrences: 1
+
+# Exit codes
+on_found: block  # Block commit if secret found

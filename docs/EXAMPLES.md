@@ -18,7 +18,7 @@ Exemplos reais de como usar a Check API em diferentes cenários.
 ```bash
 curl -X POST https://defarm-check-api-production.up.railway.app/check \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: ck_056af37680464425d1f23c543515951920f9947f022e3cb5735844673edb4f12" \
+  -H "X-API-Key: YOUR_API_KEY" \
   -d '{
     "input": {
       "type": "CNPJ",
@@ -74,7 +74,7 @@ curl -X POST https://defarm-check-api-production.up.railway.app/check \
 ```bash
 curl -X POST https://defarm-check-api-production.up.railway.app/check \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: ck_056af37680464425d1f23c543515951920f9947f022e3cb5735844673edb4f12" \
+  -H "X-API-Key: YOUR_API_KEY" \
   -d '{
     "input": {
       "type": "CNPJ",
@@ -147,7 +147,7 @@ curl -X POST https://defarm-check-api-production.up.railway.app/check \
 ```bash
 curl -X POST https://defarm-check-api-production.up.railway.app/check \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: ck_056af37680464425d1f23c543515951920f9947f022e3cb5735844673edb4f12" \
+  -H "X-API-Key: YOUR_API_KEY" \
   -d '{
     "input": {
       "type": "CPF",
@@ -208,7 +208,7 @@ curl -X POST https://defarm-check-api-production.up.railway.app/check \
 ```bash
 curl -X POST https://defarm-check-api-production.up.railway.app/check \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: ck_056af37680464425d1f23c543515951920f9947f022e3cb5735844673edb4f12" \
+  -H "X-API-Key: YOUR_API_KEY" \
   -d '{
     "input": {
       "type": "COORDINATES",
@@ -264,7 +264,7 @@ curl -X POST https://defarm-check-api-production.up.railway.app/check \
 ```bash
 curl -X POST https://defarm-check-api-production.up.railway.app/check \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: ck_056af37680464425d1f23c543515951920f9947f022e3cb5735844673edb4f12" \
+  -H "X-API-Key: YOUR_API_KEY" \
   -d '{
     "input": {
       "type": "COORDINATES",

@@ -11,7 +11,7 @@ if [ -z "$RAILWAY_DATABASE_URL" ]; then
   echo "❌ Error: RAILWAY_DATABASE_URL not set"
   echo ""
   echo "Usage:"
-  echo "  export RAILWAY_DATABASE_URL='postgresql://postgres:gA22AgAddGceGg55Dd62d6b3EaD32bg5@postgis.railway.internal:5432/railway'"
+  echo "  export RAILWAY_DATABASE_URL='postgresql://postgres:YOUR_PASSWORD@postgis.railway.internal:5432/railway'"
   echo "  ./scripts/seed-production.sh"
   exit 1
 fi

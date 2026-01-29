@@ -15,8 +15,8 @@
 ### 1. Add Redis Service ✅ COMPLETED
 
 Redis service has been created with these credentials:
-- **Internal URL** (for Railway services): `redis://default:xiAPMUNayRBGxVOjsDzHxLmlHlFgDGYR@redis.railway.internal:6379`
-- **Public URL** (for external access): `redis://default:xiAPMUNayRBGxVOjsDzHxLmlHlFgDGYR@maglev.proxy.rlwy.net:49379`
+- **Internal URL** (for Railway services): `redis://default:$REDIS_PASSWORD@redis.railway.internal:6379`
+- **Public URL** (for external access): `redis://default:$REDIS_PASSWORD@maglev.proxy.rlwy.net:XXXX`
 - **Password**: `xiAPMUNayRBGxVOjsDzHxLmlHlFgDGYR`
 
 ✅ Tested and working from local environment
@@ -108,7 +108,7 @@ Should return:
 
 ```bash
 # Locally, with Railway DATABASE_URL
-export DATABASE_URL="postgresql://postgres:gA22AgAddGceGg55Dd62d6b3EaD32bg5@caboose.proxy.rlwy.net:18740/railway"
+export DATABASE_URL="postgresql://postgres:$DATABASE_PASSWORD@caboose.proxy.rlwy.net:XXXX/railway"
 npm run db:migrate
 ```
 
@@ -135,7 +135,7 @@ Railway provides two types of URLs for Redis:
 
 **1. Internal URL** (recommended for production):
 ```
-redis://default:password@redis.railway.internal:6379
+redis://default:$REDIS_PASSWORD@redis.railway.internal:6379
 ```
 - Used by services running **inside** Railway
 - Faster (no external network)
@@ -144,7 +144,7 @@ redis://default:password@redis.railway.internal:6379
 
 **2. Public URL** (for external access):
 ```
-redis://default:password@maglev.proxy.rlwy.net:49379
+redis://default:$REDIS_PASSWORD@maglev.proxy.rlwy.net:XXXX
 ```
 - Used from **outside** Railway (e.g., your local machine)
 - Useful for debugging production data
