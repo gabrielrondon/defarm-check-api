@@ -50,6 +50,13 @@
       "when": 1769687112451,
       "tag": "0006_wandering_mother_askani",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1769689170988,
+      "tag": "0007_lonely_miracleman",
+      "breakpoints": true
     }
   ]
 }

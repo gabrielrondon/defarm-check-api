@@ -73,6 +73,22 @@ export const deterAlerts = pgTable('deter_alerts', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 });
 
+// Tabela de Terras Indígenas (FUNAI)
+// Nota: geometria será gerenciada via SQL direto (PostGIS)
+export const terrasIndigenas = pgTable('terras_indigenas', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(), // Nome da Terra Indígena
+  etnia: varchar('etnia', { length: 100 }), // Etnia indígena
+  phase: varchar('phase', { length: 50 }), // Declarada, Homologada, Regularizada
+  areaHa: integer('area_ha'), // Área em hectares
+  state: varchar('state', { length: 2 }),
+  municipality: varchar('municipality', { length: 255 }),
+  modalidade: varchar('modalidade', { length: 50 }), // Tipo de TI
+  source: varchar('source', { length: 50 }).default('FUNAI'),
+  // geometria será adicionada via SQL: geometry(MULTIPOLYGON, 4326)
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
 // Tabela Lista Suja do Trabalho Escravo (MTE)
 export const listaSuja = pgTable('lista_suja', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -123,6 +139,12 @@ export const deterAlertsIdx = {
   alertDateIdx: 'idx_deter_alerts_alert_date',
   stateIdx: 'idx_deter_alerts_state',
   classnameIdx: 'idx_deter_alerts_classname'
+};
+
+export const terrasIndigenasIdx = {
+  nameIdx: 'idx_terras_indigenas_name',
+  stateIdx: 'idx_terras_indigenas_state',
+  phaseIdx: 'idx_terras_indigenas_phase'
 };
 
 // Tabela de API Keys para autenticação
