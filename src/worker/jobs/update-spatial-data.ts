@@ -24,7 +24,7 @@ export async function updateSpatialData(): Promise<void> {
     results.terrasIndigenas = true;
     logger.info('Terras Indígenas updated successfully');
   } catch (error) {
-    logger.error('Terras Indígenas update failed', { error });
+    logger.error({ err: error }, 'Terras Indígenas update failed');
   }
 
   // Unidades de Conservação
@@ -35,7 +35,7 @@ export async function updateSpatialData(): Promise<void> {
     results.unidadesConservacao = true;
     logger.info('Unidades de Conservação updated successfully');
   } catch (error) {
-    logger.error('Unidades de Conservação update failed', { error });
+    logger.error({ err: error }, 'Unidades de Conservação update failed');
   }
 
   // Falhar se algum não funcionou
@@ -43,5 +43,5 @@ export async function updateSpatialData(): Promise<void> {
     throw new Error(`Spatial data update partially failed: ${JSON.stringify(results)}`);
   }
 
-  logger.info('Spatial data update completed', { results });
+  logger.info({ results }, 'Spatial data update completed');
 }

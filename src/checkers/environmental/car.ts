@@ -23,55 +23,50 @@
  */
 
 import { BaseChecker } from '../base.js';
-import { CheckerResult, CheckInput, CheckerMetadata } from '../../types/checker.js';
+import {
+  CheckerCategory,
+  CheckStatus,
+  CheckerResult,
+  CheckerMetadata,
+  CheckerConfig,
+  Severity
+} from '../../types/checker.js';
+import { NormalizedInput, InputType } from '../../types/input.js';
+import { logger } from '../../utils/logger.js';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 
 export class CARChecker extends BaseChecker {
-  metadata: CheckerMetadata = {
+  readonly metadata: CheckerMetadata = {
     name: 'CAR - Cadastro Ambiental Rural',
-    category: 'environmental',
+    category: CheckerCategory.ENVIRONMENTAL,
     description: 'Verifica se propriedade possui CAR (Cadastro Ambiental Rural) válido',
-    dataSource: 'SICAR - Sistema Nacional de Cadastro Ambiental Rural',
-    version: '1.0.0'
+    priority: 8,
+    supportedInputTypes: [InputType.COORDINATES]
   };
 
-  config = {
+  readonly config: CheckerConfig = {
     enabled: true,
-    timeout: 10000,  // 10s
-    cache: {
-      enabled: true,
-      ttl: 2592000  // 30 dias (CAR não muda frequentemente)
-    }
+    cacheTTL: 2592000,  // 30 dias (CAR não muda frequentemente)
+    timeout: 10000  // 10s
   };
 
   /**
    * Check se coordenadas caem em propriedade com CAR
    */
-  async check(input: CheckInput): Promise<CheckerResult> {
-    const startTime = Date.now();
+  async executeCheck(input: NormalizedInput): Promise<CheckerResult> {
+    logger.debug({ input: input.value }, 'Checking CAR registration');
 
-    // CAR só funciona com coordenadas
-    if (input.type !== 'COORDINATES') {
-      return {
-        ...this.metadata,
-        status: 'NOT_APPLICABLE',
-        message: 'CAR check only applies to coordinates',
-        executionTimeMs: Date.now() - startTime
-      };
+    if (!input.coordinates) {
+      throw new Error('Coordinates required for CAR check');
     }
 
     try {
-      const { lat, lon } = input.value as { lat: number; lon: number };
+      const { lat, lon } = input.coordinates;
 
       // Validar coordenadas
       if (!this.isValidCoordinate(lat, lon)) {
-        return {
-          ...this.metadata,
-          status: 'ERROR',
-          message: 'Invalid coordinates',
-          executionTimeMs: Date.now() - startTime
-        };
+        throw new Error('Invalid coordinates for Brazil');
       }
 
       // Query espacial: ST_Intersects(geometry, point)
@@ -99,9 +94,8 @@ export class CARChecker extends BaseChecker {
       if (!result.rows || result.rows.length === 0) {
         // NÃO está em propriedade com CAR = FAIL CRÍTICO
         return {
-          ...this.metadata,
-          status: 'FAIL',
-          severity: 'HIGH',
+          status: CheckStatus.FAIL,
+          severity: Severity.HIGH,
           message: 'Location does not have CAR (Cadastro Ambiental Rural) registration',
           details: {
             coordinates: { lat, lon },
@@ -115,7 +109,8 @@ export class CARChecker extends BaseChecker {
             url: 'https://www.car.gov.br/',
             lastUpdate: new Date().toISOString().split('T')[0]
           },
-          executionTimeMs: Date.now() - startTime
+          executionTimeMs: 0,
+          cached: false
         };
       }
 
@@ -124,34 +119,33 @@ export class CARChecker extends BaseChecker {
       const status = String(car.status || 'UNKNOWN').toUpperCase();
 
       // Determinar severity e message baseado no status
-      let severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' = 'LOW';
-      let checkStatus: 'PASS' | 'FAIL' = 'PASS';
+      let severity: Severity = Severity.LOW;
+      let checkStatus: CheckStatus = CheckStatus.PASS;
       let message = '';
 
       if (status === 'ATIVO') {
         // CAR ATIVO = PASS ✅
-        checkStatus = 'PASS';
-        severity = 'LOW';
+        checkStatus = CheckStatus.PASS;
+        severity = Severity.LOW;
         message = `Location has active CAR registration: ${car.car_number}`;
       } else if (status === 'PENDENTE') {
         // CAR PENDENTE = WARNING (ainda regularizando)
-        checkStatus = 'FAIL';
-        severity = 'MEDIUM';
+        checkStatus = CheckStatus.FAIL;
+        severity = Severity.MEDIUM;
         message = `Location has pending CAR registration: ${car.car_number}`;
       } else if (status === 'CANCELADO' || status === 'SUSPENSO') {
         // CAR CANCELADO/SUSPENSO = FAIL ❌
-        checkStatus = 'FAIL';
-        severity = 'HIGH';
+        checkStatus = CheckStatus.FAIL;
+        severity = Severity.HIGH;
         message = `Location has ${status.toLowerCase()} CAR registration: ${car.car_number}`;
       } else {
         // Status desconhecido = WARNING
-        checkStatus = 'FAIL';
-        severity = 'MEDIUM';
+        checkStatus = CheckStatus.FAIL;
+        severity = Severity.MEDIUM;
         message = `Location has CAR registration with unknown status: ${car.car_number}`;
       }
 
       return {
-        ...this.metadata,
         status: checkStatus,
         severity,
         message,
@@ -172,17 +166,12 @@ export class CARChecker extends BaseChecker {
           url: `https://www.car.gov.br/publico/imoveis/index?car=${car.car_number}`,
           lastUpdate: new Date().toISOString().split('T')[0]
         },
-        executionTimeMs: Date.now() - startTime
+        executionTimeMs: 0,
+        cached: false
       };
 
-    } catch (error) {
-      this.logger.error('CAR check failed', { error, input });
-      return {
-        ...this.metadata,
-        status: 'ERROR',
-        message: `Failed to check CAR: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        executionTimeMs: Date.now() - startTime
-      };
+    } catch (err) {
+      throw new Error(`Failed to check CAR: ${(err as Error).message}`);
     }
   }
 

@@ -16,55 +16,50 @@
  */
 
 import { BaseChecker } from '../base.js';
-import { CheckerResult, CheckInput, CheckerMetadata } from '../../types/checker.js';
+import {
+  CheckerCategory,
+  CheckStatus,
+  CheckerResult,
+  CheckerMetadata,
+  CheckerConfig,
+  Severity
+} from '../../types/checker.js';
+import { NormalizedInput, InputType } from '../../types/input.js';
+import { logger } from '../../utils/logger.js';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 
 export class IndigenousLandChecker extends BaseChecker {
-  metadata: CheckerMetadata = {
+  readonly metadata: CheckerMetadata = {
     name: 'Indigenous Lands',
-    category: 'environmental',
+    category: CheckerCategory.ENVIRONMENTAL,
     description: 'Verifica se coordenadas sobrepõem Terras Indígenas demarcadas (FUNAI)',
-    dataSource: 'FUNAI - Fundação Nacional dos Povos Indígenas',
-    version: '1.0.0'
+    priority: 10,
+    supportedInputTypes: [InputType.COORDINATES]
   };
 
-  config = {
+  readonly config: CheckerConfig = {
     enabled: true,
-    timeout: 10000,  // 10s
-    cache: {
-      enabled: true,
-      ttl: 2592000  // 30 dias (TIs não mudam rápido)
-    }
+    cacheTTL: 2592000,  // 30 dias (TIs não mudam rápido)
+    timeout: 10000  // 10s
   };
 
   /**
    * Check se coordenadas caem em Terra Indígena
    */
-  async check(input: CheckInput): Promise<CheckerResult> {
-    const startTime = Date.now();
+  async executeCheck(input: NormalizedInput): Promise<CheckerResult> {
+    logger.debug({ input: input.value }, 'Checking indigenous lands');
 
-    // TIs só funcionam com coordenadas
-    if (input.type !== 'COORDINATES') {
-      return {
-        ...this.metadata,
-        status: 'NOT_APPLICABLE',
-        message: 'Indigenous lands check only applies to coordinates',
-        executionTimeMs: Date.now() - startTime
-      };
+    if (!input.coordinates) {
+      throw new Error('Coordinates required for indigenous lands check');
     }
 
     try {
-      const { lat, lon } = input.value as { lat: number; lon: number };
+      const { lat, lon } = input.coordinates;
 
       // Validar coordenadas
       if (!this.isValidCoordinate(lat, lon)) {
-        return {
-          ...this.metadata,
-          status: 'ERROR',
-          message: 'Invalid coordinates',
-          executionTimeMs: Date.now() - startTime
-        };
+        throw new Error('Invalid coordinates for Brazil');
       }
 
       // Query espacial: ST_Intersects(geometry, point)
@@ -91,14 +86,19 @@ export class IndigenousLandChecker extends BaseChecker {
       if (!result.rows || result.rows.length === 0) {
         // Não está em Terra Indígena = PASS
         return {
-          ...this.metadata,
-          status: 'PASS',
+          status: CheckStatus.PASS,
           message: 'Location is not within any Indigenous Land',
           details: {
             coordinates: { lat, lon },
             checkedAt: new Date().toISOString()
           },
-          executionTimeMs: Date.now() - startTime
+          evidence: {
+            dataSource: 'FUNAI',
+            url: 'https://www.gov.br/funai/pt-br/atuacao/terras-indigenas',
+            lastUpdate: new Date().toISOString().split('T')[0]
+          },
+          executionTimeMs: 0,
+          cached: false
         };
       }
 
@@ -106,30 +106,29 @@ export class IndigenousLandChecker extends BaseChecker {
       const ti = result.rows[0];
 
       // Severidade baseada na fase da demarcação
-      let severity: 'CRITICAL' | 'HIGH' = 'CRITICAL';
+      let severity: Severity = Severity.CRITICAL;
       let phaseDescription = '';
 
       switch (ti.phase) {
         case 'Regularizada':
-          severity = 'CRITICAL';
+          severity = Severity.CRITICAL;
           phaseDescription = 'fully regularized and protected by law';
           break;
         case 'Homologada':
-          severity = 'CRITICAL';
+          severity = Severity.CRITICAL;
           phaseDescription = 'officially recognized by Presidential decree';
           break;
         case 'Declarada':
-          severity = 'HIGH';
+          severity = Severity.HIGH;
           phaseDescription = 'declared but pending final regularization';
           break;
         default:
-          severity = 'CRITICAL';
+          severity = Severity.CRITICAL;
           phaseDescription = 'under legal protection';
       }
 
       return {
-        ...this.metadata,
-        status: 'FAIL',
+        status: CheckStatus.FAIL,
         severity,
         message: `Location overlaps with Indigenous Land: ${ti.name}`,
         details: {
@@ -142,24 +141,19 @@ export class IndigenousLandChecker extends BaseChecker {
           state: ti.state,
           modalidade: ti.modalidade,
           coordinates: { lat, lon },
-          recommendation: this.getRecommendation(ti.name, ti.phase as string, ti.etnia as string)
+          recommendation: this.getRecommendation(ti.name as string, ti.phase as string, ti.etnia as string)
         },
         evidence: {
           dataSource: 'FUNAI - Fundação Nacional dos Povos Indígenas',
           url: 'https://www.gov.br/funai/pt-br/atuacao/terras-indigenas',
           lastUpdate: new Date().toISOString().split('T')[0]
         },
-        executionTimeMs: Date.now() - startTime
+        executionTimeMs: 0,
+        cached: false
       };
 
-    } catch (error) {
-      this.logger.error('Indigenous land check failed', { error, input });
-      return {
-        ...this.metadata,
-        status: 'ERROR',
-        message: `Failed to check Indigenous lands: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        executionTimeMs: Date.now() - startTime
-      };
+    } catch (err) {
+      throw new Error(`Failed to check Indigenous lands: ${(err as Error).message}`);
     }
   }
 
@@ -188,3 +182,5 @@ export class IndigenousLandChecker extends BaseChecker {
       `Recommendation: DO NOT PROCEED with any transactions involving this location.`;
   }
 }
+
+export default new IndigenousLandChecker();

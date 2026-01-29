@@ -50,7 +50,7 @@ export async function updateCAR(): Promise<void> {
   const criticalChanges: any[] = await detectCriticalChanges();
 
   if (criticalChanges.length > 0) {
-    logger.warn('Critical CAR changes detected', { states: criticalChanges.length });
+    logger.warn({ states: criticalChanges.length }, 'Critical CAR changes detected');
 
     for (const change of criticalChanges) {
       const total = change.ativos + change.cancelados + change.suspensos + change.pendentes;
@@ -64,7 +64,7 @@ export async function updateCAR(): Promise<void> {
     }
   }
 
-  logger.info('CAR update completed', {
+  logger.info({
     criticalStates: criticalChanges.length
-  });
+  }, 'CAR update completed');
 }

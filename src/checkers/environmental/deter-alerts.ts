@@ -14,55 +14,50 @@
  */
 
 import { BaseChecker } from '../base.js';
-import { CheckerResult, CheckInput, CheckerMetadata } from '../../types/checker.js';
+import {
+  CheckerCategory,
+  CheckStatus,
+  CheckerResult,
+  CheckerMetadata,
+  CheckerConfig,
+  Severity
+} from '../../types/checker.js';
+import { NormalizedInput, InputType } from '../../types/input.js';
+import { logger } from '../../utils/logger.js';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 
 export class DeterAlertChecker extends BaseChecker {
-  metadata: CheckerMetadata = {
+  readonly metadata: CheckerMetadata = {
     name: 'DETER Real-Time Alerts',
-    category: 'environmental',
+    category: CheckerCategory.ENVIRONMENTAL,
     description: 'Verifica alertas de desmatamento em tempo real do INPE DETER-B (últimos 90 dias)',
-    dataSource: 'INPE DETER-B - Sistema de Detecção de Desmatamento em Tempo Real',
-    version: '1.0.0'
+    priority: 9,
+    supportedInputTypes: [InputType.COORDINATES]
   };
 
-  config = {
+  readonly config: CheckerConfig = {
     enabled: true,
-    timeout: 10000,  // 10s (query espacial pode ser lenta)
-    cache: {
-      enabled: true,
-      ttl: 86400  // 24h (alertas mudam diariamente)
-    }
+    cacheTTL: 86400,  // 24h (alertas mudam diariamente)
+    timeout: 10000  // 10s (query espacial pode ser lenta)
   };
 
   /**
    * Check se coordenadas caem em alerta DETER recente
    */
-  async check(input: CheckInput): Promise<CheckerResult> {
-    const startTime = Date.now();
+  async executeCheck(input: NormalizedInput): Promise<CheckerResult> {
+    logger.debug({ input: input.value }, 'Checking DETER alerts');
 
-    // DETER só funciona com coordenadas
-    if (input.type !== 'COORDINATES') {
-      return {
-        ...this.metadata,
-        status: 'NOT_APPLICABLE',
-        message: 'DETER alerts only apply to coordinates',
-        executionTimeMs: Date.now() - startTime
-      };
+    if (!input.coordinates) {
+      throw new Error('Coordinates required for DETER check');
     }
 
     try {
-      const { lat, lon } = input.value as { lat: number; lon: number };
+      const { lat, lon } = input.coordinates;
 
       // Validar coordenadas
       if (!this.isValidCoordinate(lat, lon)) {
-        return {
-          ...this.metadata,
-          status: 'ERROR',
-          message: 'Invalid coordinates',
-          executionTimeMs: Date.now() - startTime
-        };
+        throw new Error('Invalid coordinates for Amazônia Legal');
       }
 
       // Query espacial: ST_Contains(geometry, point)
@@ -96,15 +91,20 @@ export class DeterAlertChecker extends BaseChecker {
       if (!result.rows || result.rows.length === 0) {
         // Nenhum alerta recente nesta localização = PASS
         return {
-          ...this.metadata,
-          status: 'PASS',
+          status: CheckStatus.PASS,
           message: 'No recent DETER alerts at this location (last 90 days)',
           details: {
             coordinates: { lat, lon },
             daysChecked: 90,
             checkedAt: new Date().toISOString()
           },
-          executionTimeMs: Date.now() - startTime
+          evidence: {
+            dataSource: 'INPE DETER-B',
+            url: 'http://terrabrasilis.dpi.inpe.br/',
+            lastUpdate: new Date().toISOString().split('T')[0]
+          },
+          executionTimeMs: 0,
+          cached: false
         };
       }
 
@@ -119,23 +119,22 @@ export class DeterAlertChecker extends BaseChecker {
       const criticalClasses = ['DESMATAMENTO_VEG', 'DESMATAMENTO_CR', 'CORTE_SELETIVO'];
       const highClasses = ['DEGRADACAO', 'MINERACAO'];
 
-      let severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+      let severity: Severity;
       if (criticalClasses.includes(alert.classname as string)) {
-        severity = 'CRITICAL';
+        severity = Severity.CRITICAL;
       } else if (highClasses.includes(alert.classname as string)) {
-        severity = 'HIGH';
+        severity = Severity.HIGH;
       } else {
-        severity = 'MEDIUM';
+        severity = Severity.MEDIUM;
       }
 
       // Recentidade aumenta severidade
       if (daysAgo <= 7) {
-        severity = 'CRITICAL';  // Alerta dos últimos 7 dias = crítico
+        severity = Severity.CRITICAL;  // Alerta dos últimos 7 dias = crítico
       }
 
       return {
-        ...this.metadata,
-        status: 'FAIL',
+        status: CheckStatus.FAIL,
         severity,
         message: `Recent deforestation alert detected: ${alert.classname} (${daysAgo} days ago)`,
         details: {
@@ -155,17 +154,12 @@ export class DeterAlertChecker extends BaseChecker {
           url: 'http://terrabrasilis.dpi.inpe.br/',
           lastUpdate: new Date().toISOString().split('T')[0]
         },
-        executionTimeMs: Date.now() - startTime
+        executionTimeMs: 0,
+        cached: false
       };
 
-    } catch (error) {
-      this.logger.error('DETER check failed', { error, input });
-      return {
-        ...this.metadata,
-        status: 'ERROR',
-        message: `Failed to check DETER alerts: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        executionTimeMs: Date.now() - startTime
-      };
+    } catch (err) {
+      throw new Error(`Failed to check DETER alerts: ${(err as Error).message}`);
     }
   }
 
@@ -185,18 +179,20 @@ export class DeterAlertChecker extends BaseChecker {
   /**
    * Gerar recomendação baseada na severidade
    */
-  private getRecommendation(severity: string, daysAgo: number, classname: string): string {
-    if (severity === 'CRITICAL') {
+  private getRecommendation(severity: Severity, daysAgo: number, classname: string): string {
+    if (severity === Severity.CRITICAL) {
       if (daysAgo <= 7) {
         return `CRITICAL: Recent deforestation detected (${daysAgo} days ago). Class: ${classname}. This location has been flagged for illegal deforestation in the last week. EUDR compliance violation. Do not proceed with any transactions from this area.`;
       }
       return `CRITICAL: Deforestation detected (${daysAgo} days ago). Class: ${classname}. This area has been flagged for illegal activity. Immediate compliance review required before any transactions.`;
     }
 
-    if (severity === 'HIGH') {
+    if (severity === Severity.HIGH) {
       return `HIGH: Environmental degradation detected (${daysAgo} days ago). Class: ${classname}. Property requires environmental compliance verification before proceeding.`;
     }
 
     return `MEDIUM: Environmental alert detected (${daysAgo} days ago). Class: ${classname}. Review environmental status of this location.`;
   }
 }
+
+export default new DeterAlertChecker();

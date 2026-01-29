@@ -17,55 +17,50 @@
  */
 
 import { BaseChecker } from '../base.js';
-import { CheckerResult, CheckInput, CheckerMetadata } from '../../types/checker.js';
+import {
+  CheckerCategory,
+  CheckStatus,
+  CheckerResult,
+  CheckerMetadata,
+  CheckerConfig,
+  Severity
+} from '../../types/checker.js';
+import { NormalizedInput, InputType } from '../../types/input.js';
+import { logger } from '../../utils/logger.js';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 
 export class ConservationUnitChecker extends BaseChecker {
-  metadata: CheckerMetadata = {
+  readonly metadata: CheckerMetadata = {
     name: 'Conservation Units',
-    category: 'environmental',
+    category: CheckerCategory.ENVIRONMENTAL,
     description: 'Verifica se coordenadas sobrepõem Unidades de Conservação (ICMBio)',
-    dataSource: 'ICMBio - Instituto Chico Mendes de Conservação da Biodiversidade',
-    version: '1.0.0'
+    priority: 9,
+    supportedInputTypes: [InputType.COORDINATES]
   };
 
-  config = {
+  readonly config: CheckerConfig = {
     enabled: true,
-    timeout: 10000,  // 10s
-    cache: {
-      enabled: true,
-      ttl: 2592000  // 30 dias (UCs não mudam rápido)
-    }
+    cacheTTL: 2592000,  // 30 dias (UCs não mudam rápido)
+    timeout: 10000  // 10s
   };
 
   /**
    * Check se coordenadas caem em Unidade de Conservação
    */
-  async check(input: CheckInput): Promise<CheckerResult> {
-    const startTime = Date.now();
+  async executeCheck(input: NormalizedInput): Promise<CheckerResult> {
+    logger.debug({ input: input.value }, 'Checking conservation units');
 
-    // UCs só funcionam com coordenadas
-    if (input.type !== 'COORDINATES') {
-      return {
-        ...this.metadata,
-        status: 'NOT_APPLICABLE',
-        message: 'Conservation units check only applies to coordinates',
-        executionTimeMs: Date.now() - startTime
-      };
+    if (!input.coordinates) {
+      throw new Error('Coordinates required for conservation units check');
     }
 
     try {
-      const { lat, lon } = input.value as { lat: number; lon: number };
+      const { lat, lon } = input.coordinates;
 
       // Validar coordenadas
       if (!this.isValidCoordinate(lat, lon)) {
-        return {
-          ...this.metadata,
-          status: 'ERROR',
-          message: 'Invalid coordinates',
-          executionTimeMs: Date.now() - startTime
-        };
+        throw new Error('Invalid coordinates for Brazil');
       }
 
       // Query espacial: ST_Intersects(geometry, point)
@@ -92,14 +87,19 @@ export class ConservationUnitChecker extends BaseChecker {
       if (!result.rows || result.rows.length === 0) {
         // Não está em UC = PASS
         return {
-          ...this.metadata,
-          status: 'PASS',
+          status: CheckStatus.PASS,
           message: 'Location is not within any Conservation Unit',
           details: {
             coordinates: { lat, lon },
             checkedAt: new Date().toISOString()
           },
-          executionTimeMs: Date.now() - startTime
+          evidence: {
+            dataSource: 'ICMBio',
+            url: 'https://www.gov.br/icmbio/pt-br/assuntos/biodiversidade/unidade-de-conservacao',
+            lastUpdate: new Date().toISOString().split('T')[0]
+          },
+          executionTimeMs: 0,
+          cached: false
         };
       }
 
@@ -107,25 +107,24 @@ export class ConservationUnitChecker extends BaseChecker {
       const uc = result.rows[0];
 
       // Severidade baseada no grupo
-      let severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' = 'CRITICAL';
+      let severity: Severity = Severity.CRITICAL;
       let groupDescription = '';
 
       if (uc.group === 'Proteção Integral') {
-        severity = 'CRITICAL';
+        severity = Severity.CRITICAL;
         groupDescription = 'Full Protection - economic activities strictly prohibited';
       } else if (uc.group === 'Uso Sustentável') {
         // Uso Sustentável ainda é restrito, mas menos severo
-        severity = 'HIGH';
+        severity = Severity.HIGH;
         groupDescription = 'Sustainable Use - economic activities regulated/restricted';
       } else {
         // Default: assume CRITICAL se não identificou
-        severity = 'CRITICAL';
+        severity = Severity.CRITICAL;
         groupDescription = 'under legal protection';
       }
 
       return {
-        ...this.metadata,
-        status: 'FAIL',
+        status: CheckStatus.FAIL,
         severity,
         message: `Location overlaps with Conservation Unit: ${uc.name}`,
         details: {
@@ -149,17 +148,12 @@ export class ConservationUnitChecker extends BaseChecker {
           url: 'https://www.gov.br/icmbio/pt-br/assuntos/biodiversidade/unidade-de-conservacao',
           lastUpdate: new Date().toISOString().split('T')[0]
         },
-        executionTimeMs: Date.now() - startTime
+        executionTimeMs: 0,
+        cached: false
       };
 
-    } catch (error) {
-      this.logger.error('Conservation unit check failed', { error, input });
-      return {
-        ...this.metadata,
-        status: 'ERROR',
-        message: `Failed to check Conservation Units: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        executionTimeMs: Date.now() - startTime
-      };
+    } catch (err) {
+      throw new Error(`Failed to check Conservation Units: ${(err as Error).message}`);
     }
   }
 
@@ -202,3 +196,5 @@ export class ConservationUnitChecker extends BaseChecker {
     }
   }
 }
+
+export default new ConservationUnitChecker();

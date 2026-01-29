@@ -77,17 +77,17 @@ function wrapJobHandler(job: ScheduledJob) {
 
       const duration = Math.round((Date.now() - startTime) / 1000);
 
-      logger.info(`=== ${job.name} COMPLETED ===`, { duration });
+      logger.info({ duration }, `=== ${job.name} COMPLETED ===`);
       await telegram.notifyJobSuccess(job.name, duration);
 
     } catch (error) {
       const duration = Math.round((Date.now() - startTime) / 1000);
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      logger.error(`=== ${job.name} FAILED ===`, {
+      logger.error({
         duration,
         error: errorMessage
-      });
+      }, `=== ${job.name} FAILED ===`);
 
       await telegram.notifyJobFailure(job.name, errorMessage);
 
@@ -109,7 +109,7 @@ export function setupScheduler(): ScheduledJob[] {
       continue;
     }
 
-    logger.info(`Scheduling job: ${job.name}`, { schedule: job.schedule });
+    logger.info({ schedule: job.schedule }, `Scheduling job: ${job.name}`);
 
     cron.schedule(job.schedule, wrapJobHandler(job), {
       timezone: 'America/Sao_Paulo'  // Horário de Brasília

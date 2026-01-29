@@ -67,8 +67,9 @@ class TelegramService {
       logger.debug('Telegram message sent successfully');
       return true;
     } catch (error) {
-      logger.error('Failed to send Telegram message', {
-        error: error instanceof Error ? error.message : error
+      logger.error({
+        err: error,
+        msg: 'Failed to send Telegram message'
       });
       return false;
     }
@@ -253,9 +254,9 @@ class TelegramService {
 
     try {
       const response = await axios.get(`${this.baseUrl}/getMe`);
-      logger.info('Telegram connection test successful', {
+      logger.info({
         bot: response.data.result.username
-      });
+      }, 'Telegram connection test successful');
 
       await this.sendMessage({
         text: '✅ <b>Telegram Bot Conectado!</b>\n\n' +
@@ -270,9 +271,9 @@ class TelegramService {
 
       return true;
     } catch (error) {
-      logger.error('Telegram connection test failed', {
-        error: error instanceof Error ? error.message : error
-      });
+      logger.error({
+        err: error
+      }, 'Telegram connection test failed');
       return false;
     }
   }

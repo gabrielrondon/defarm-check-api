@@ -34,7 +34,7 @@ async function main() {
   const missing = requiredEnvVars.filter(varName => !process.env[varName]);
 
   if (missing.length > 0) {
-    logger.error('Missing required environment variables', { missing });
+    logger.error({ missing }, 'Missing required environment variables');
     process.exit(1);
   }
 
@@ -54,10 +54,10 @@ async function main() {
   logger.info('='.repeat(60));
   logger.info('✅ Worker Service Started Successfully');
   logger.info('='.repeat(60));
-  logger.info('Scheduled jobs', {
+  logger.info({
     count: jobs.length,
     jobs: jobs.map(j => ({ name: j.name, schedule: j.schedule }))
-  });
+  }, 'Scheduled jobs');
 
   // Enviar notificação de startup
   await telegram.sendMessage({
@@ -90,7 +90,7 @@ process.on('SIGINT', async () => {
 
 // Error handling
 process.on('uncaughtException', async (error) => {
-  logger.error('Uncaught exception', { error });
+  logger.error({ err: error }, 'Uncaught exception');
 
   await telegram.notifyJobFailure('Worker Service', error.message);
 
@@ -98,7 +98,7 @@ process.on('uncaughtException', async (error) => {
 });
 
 process.on('unhandledRejection', async (reason) => {
-  logger.error('Unhandled rejection', { reason });
+  logger.error({ reason }, 'Unhandled rejection');
 
   await telegram.notifyJobFailure('Worker Service', String(reason));
 
@@ -107,7 +107,7 @@ process.on('unhandledRejection', async (reason) => {
 
 // Start worker
 main().catch(async (error) => {
-  logger.error('Worker failed to start', { error });
+  logger.error({ err: error }, 'Worker failed to start');
 
   await telegram.notifyJobFailure('Worker Service Startup', error.message);
 

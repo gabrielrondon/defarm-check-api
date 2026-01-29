@@ -55,10 +55,10 @@ export async function updateListaSuja(): Promise<void> {
   const added = newRecords.filter(r => !currentDocs.has(r.document));
   const removed = Array.from(currentDocs).filter(doc => !newDocs.has(doc));
 
-  logger.info('Changes detected', {
+  logger.info({
     added: added.length,
     removed: removed.length
-  });
+  }, 'Changes detected');
 
   // Seed
   await execAsync('tsx scripts/seed-lista-suja-simple.ts');
@@ -74,9 +74,9 @@ export async function updateListaSuja(): Promise<void> {
     );
   }
 
-  logger.info('Lista Suja update completed', {
+  logger.info({
     added: added.length,
     removed: removed.length,
     total: newRecords.length
-  });
+  }, 'Lista Suja update completed');
 }

@@ -87,8 +87,8 @@ export async function updateDETER(): Promise<void> {
     );
   }
 
-  logger.info('DETER update completed', {
+  logger.info({
     newAlerts: stats.reduce((sum: number, s: any) => sum + Number(s.count), 0),
     criticalAlerts: criticalAlerts.length
-  });
+  }, 'DETER update completed');
 }

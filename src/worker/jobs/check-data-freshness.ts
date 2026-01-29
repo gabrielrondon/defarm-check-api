@@ -67,11 +67,11 @@ export async function checkDataFreshness(): Promise<void> {
 
     const emoji = result.status === 'FRESH' ? '✅' : result.status === 'STALE' ? '⚠️' : '❌';
 
-    logger.info(`${emoji} ${result.source.name}`, {
+    logger.info({
       status: result.status,
       ageInDays: result.ageInDays,
       slaMaxDays: result.source.slaMaxDays
-    });
+    }, `${emoji} ${result.source.name}`);
 
     // Notificar se STALE ou CRITICAL
     if (result.status === 'STALE' || result.status === 'CRITICAL') {
@@ -87,12 +87,12 @@ export async function checkDataFreshness(): Promise<void> {
   const stale = results.filter(r => r.status === 'STALE').length;
   const critical = results.filter(r => r.status === 'CRITICAL').length;
 
-  logger.info('Data freshness check completed', {
+  logger.info({
     total: results.length,
     fresh,
     stale,
     critical
-  });
+  }, 'Data freshness check completed');
 
   // Lançar erro se houver CRITICAL (para notificação automática)
   if (critical > 0) {

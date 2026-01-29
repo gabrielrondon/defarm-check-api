@@ -46,5 +46,5 @@ export async function updateIbama(): Promise<void> {
   // Stats
   const stats = await getStats();
 
-  logger.info('IBAMA update completed', { stats });
+  logger.info({ stats }, 'IBAMA update completed');
 }
