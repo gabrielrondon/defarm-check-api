@@ -6,6 +6,8 @@ API de verificação de compliance socioambiental que agrega múltiplas fontes d
 
 ## 🎯 O que a API faz?
 
+> **📘 Quer entender em profundidade?** Leia o [Overview Completo](./docs/OVERVIEW.md) para detalhes sobre o problema do agronegócio, cada fonte de dados, como coletamos e armazenamos informações, e muito mais.
+
 Verifica automaticamente se um produtor, propriedade ou produto está em conformidade com regulamentações socioambientais brasileiras, consultando:
 
 - **Lista Suja do Trabalho Escravo** (MTE) - 678 registros
@@ -371,8 +373,11 @@ src/
 
 ## 📚 Documentação Adicional
 
+- [Overview Completo](./docs/OVERVIEW.md) - Entenda o problema, fontes de dados, arquitetura completa
+- [OpenAPI Specification](./openapi.yaml) - Especificação OpenAPI 3.0 completa (para importar em ferramentas)
 - [API Reference](./docs/API.md) - Referência completa dos endpoints
 - [Integration Guide](./docs/INTEGRATION.md) - Guia de integração detalhado
+- [Examples](./docs/EXAMPLES.md) - Exemplos práticos com casos reais
 - [Railway Setup](./RAILWAY_SETUP.md) - Deploy no Railway
 - [Swagger/OpenAPI](https://defarm-check-api-production.up.railway.app/docs) - Documentação interativa
 
