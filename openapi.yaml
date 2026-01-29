@@ -1,0 +1,786 @@
+openapi: 3.0.3
+info:
+  title: DeFarm Check API
+  description: |
+    API de verificação de compliance socioambiental para o agronegócio brasileiro.
+
+    Agrega múltiplas fontes de dados públicos governamentais para validar conformidade
+    de produtores, propriedades e produtos rurais.
+
+    **Fontes de dados:**
+    - Lista Suja do Trabalho Escravo (MTE) - 678 registros
+    - Embargos Ambientais (IBAMA) - 65,953 documentos
+    - Desmatamento (PRODES/INPE) - Dados geoespaciais
+    - Cadastro Ambiental Rural (CAR/SICAR) - Em desenvolvimento
+
+    **Documentação completa:** https://github.com/gabrielrondon/defarm-check-api
+  version: 1.0.0
+  contact:
+    name: DeFarm Support
+    email: suporte@defarm.com
+    url: https://defarm.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://defarm-check-api-production.up.railway.app
+    description: Production server
+  - url: http://localhost:3000
+    description: Local development server
+
+tags:
+  - name: check
+    description: Compliance check operations
+  - name: sources
+    description: Data source information
+  - name: health
+    description: Health check endpoints
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /check:
+    post:
+      tags:
+        - check
+      summary: Execute compliance check
+      description: |
+        Executa verificação de compliance socioambiental para um input (CNPJ, CPF, coordenadas, etc).
+
+        A API consulta múltiplas fontes em paralelo e retorna um veredito agregado com score de 0-100.
+
+        **Performance:**
+        - Primeira requisição: ~200ms
+        - Com cache: ~10ms
+        - Cache TTL: 7 dias
+
+        **Rate limit:** 10,000 requisições/minuto por API key
+      operationId: executeCheck
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckRequest'
+            examples:
+              cnpj:
+                summary: Verificar CNPJ
+                value:
+                  input:
+                    type: CNPJ
+                    value: "12345678000190"
+              cnpj_formatted:
+                summary: CNPJ com formatação
+                value:
+                  input:
+                    type: CNPJ
+                    value: "12.345.678/0001-90"
+              cpf:
+                summary: Verificar CPF
+                value:
+                  input:
+                    type: CPF
+                    value: "12345678900"
+              coordinates:
+                summary: Verificar coordenadas (desmatamento)
+                value:
+                  input:
+                    type: COORDINATES
+                    value:
+                      lat: -7.0945
+                      lon: -61.089
+              with_options:
+                summary: Com opções customizadas
+                value:
+                  input:
+                    type: CNPJ
+                    value: "12345678000190"
+                  options:
+                    useCache: true
+                    includeEvidence: true
+                    timeout: 30000
+      responses:
+        '200':
+          description: Check executado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckResponse'
+              examples:
+                compliant:
+                  summary: Produtor conforme (100%)
+                  value:
+                    checkId: "a84b07fb-8142-4cc3-bcf4-a59e368be37c"
+                    input:
+                      type: "CNPJ"
+                      value: "11222333000144"
+                    timestamp: "2026-01-29T10:30:00.000Z"
+                    verdict: "COMPLIANT"
+                    score: 100
+                    sources:
+                      - name: "Slave Labor Registry"
+                        category: "social"
+                        status: "PASS"
+                        message: "Not found in slave labor registry"
+                        executionTimeMs: 15
+                        cached: false
+                      - name: "IBAMA Embargoes"
+                        category: "environmental"
+                        status: "PASS"
+                        message: "No active IBAMA embargoes found"
+                        executionTimeMs: 18
+                        cached: false
+                    summary:
+                      totalCheckers: 2
+                      passed: 2
+                      failed: 0
+                      warnings: 0
+                      errors: 0
+                      notApplicable: 0
+                    metadata:
+                      processingTimeMs: 185
+                      cacheHitRate: 0
+                      apiVersion: "1.0.0"
+                      timestamp: "2026-01-29T10:30:00.000Z"
+                non_compliant:
+                  summary: Produtor não conforme (Lista Suja)
+                  value:
+                    checkId: "b1c2d3e4-f5g6-h7i8-j9k0-l1m2n3o4p5q6"
+                    verdict: "NON_COMPLIANT"
+                    score: 50
+                    sources:
+                      - name: "Slave Labor Registry"
+                        category: "social"
+                        status: "FAIL"
+                        severity: "CRITICAL"
+                        message: "Found in slave labor registry: 41.297.068 GILBERTO ELENO BATISTA DOS SANTOS"
+                        details:
+                          employerName: "41.297.068 GILBERTO ELENO BATISTA DOS SANTOS"
+                          type: "CNPJ"
+                          state: "SP"
+                          address: "ROD. PREFEITO JOAQUIM SIMÃO, KM 735, CENTRO, IGARATÁ/SP"
+                          year: 2024
+                          workersAffected: 2
+                          cnae: "4399-1/03"
+                          inclusionDate: "06/10/2025"
+                          recommendation: "CRITICAL: Immediate compliance review required."
+                        evidence:
+                          dataSource: "Ministério do Trabalho e Emprego - Cadastro de Empregadores"
+                          url: "https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/cadastro_empregadores.xlsx"
+                          lastUpdate: "2026-01-28"
+                        executionTimeMs: 22
+                        cached: false
+                    summary:
+                      totalCheckers: 2
+                      passed: 1
+                      failed: 1
+                      warnings: 0
+                    metadata:
+                      processingTimeMs: 210
+                      cacheHitRate: 0
+                deforestation:
+                  summary: Área com desmatamento detectado
+                  value:
+                    verdict: "NON_COMPLIANT"
+                    score: 0
+                    sources:
+                      - name: "PRODES Deforestation"
+                        category: "environmental"
+                        status: "FAIL"
+                        severity: "HIGH"
+                        message: "Deforestation detected: 15ha in 2024"
+                        details:
+                          area_ha: 15
+                          year: 2024
+                          municipality: "Novo Aripuanã"
+                          state: "AM"
+                          path_row: "231/066"
+                          coordinates:
+                            lat: -7.0945
+                            lon: -61.089
+                          recommendation: "HIGH: Deforestation detected at this location."
+                        evidence:
+                          dataSource: "INPE PRODES - Programa de Monitoramento do Desmatamento"
+                          url: "http://terrabrasilis.dpi.inpe.br/"
+                          lastUpdate: "2025-12-01"
+        '400':
+          description: Bad Request - Input inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Bad Request"
+                message: "Invalid input type. Must be one of: CNPJ, CPF, COORDINATES"
+                statusCode: 400
+        '401':
+          description: Unauthorized - API key inválida ou ausente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Unauthorized"
+                message: "Missing API key. Include X-API-Key header."
+                statusCode: 401
+        '429':
+          description: Too Many Requests - Rate limit excedido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Too Many Requests"
+                message: "Rate limit exceeded. Maximum 10,000 requests per minute."
+                statusCode: 429
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Internal Server Error"
+                message: "An unexpected error occurred"
+                statusCode: 500
+
+  /checks/{id}:
+    get:
+      tags:
+        - check
+      summary: Get check by ID
+      description: |
+        Busca resultado de uma verificação anterior pelo ID.
+
+        Útil para:
+        - Recuperar resultados históricos
+        - Implementar polling de checks assíncronos
+        - Auditar verificações passadas
+      operationId: getCheckById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID único da verificação (UUID)
+          schema:
+            type: string
+            format: uuid
+          example: "a84b07fb-8142-4cc3-bcf4-a59e368be37c"
+      responses:
+        '200':
+          description: Check encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckResponse'
+        '404':
+          description: Check não encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Not Found"
+                message: "Check not found"
+                statusCode: 404
+
+  /sources:
+    get:
+      tags:
+        - sources
+      summary: List all data sources
+      description: |
+        Lista todas as fontes de dados (checkers) disponíveis na API.
+
+        Útil para:
+        - Descobrir quais checkers estão ativos
+        - Verificar status operacional de cada fonte
+        - Entender categorias disponíveis
+      operationId: listSources
+      security:
+        - ApiKeyAuth: []
+      responses:
+        '200':
+          description: Lista de fontes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SourceInfo'
+              example:
+                - name: "Slave Labor Registry"
+                  category: "social"
+                  enabled: true
+                  status: "operational"
+                  description: "Verifica se CNPJ/CPF está na Lista Suja do Trabalho Escravo (MTE)"
+                - name: "IBAMA Embargoes"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Verifica embargos ambientais ativos do IBAMA"
+                - name: "PRODES Deforestation"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Detecta desmatamento em coordenadas geográficas (INPE)"
+                - name: "CAR Registry"
+                  category: "environmental"
+                  enabled: false
+                  status: "down"
+                  description: "Verifica registro no Cadastro Ambiental Rural (em desenvolvimento)"
+
+  /sources/{category}:
+    get:
+      tags:
+        - sources
+      summary: List sources by category
+      description: |
+        Lista fontes de dados filtradas por categoria.
+
+        **Categorias disponíveis:**
+        - `social`: Checkers de compliance social (trabalho escravo, etc)
+        - `environmental`: Checkers ambientais (embargos, desmatamento, CAR)
+        - `legal`: Checkers legais (em desenvolvimento)
+      operationId: listSourcesByCategory
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - name: category
+          in: path
+          required: true
+          description: Categoria das fontes
+          schema:
+            type: string
+            enum:
+              - environmental
+              - social
+              - legal
+          example: "environmental"
+      responses:
+        '200':
+          description: Lista de fontes da categoria
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SourceInfo'
+              example:
+                - name: "IBAMA Embargoes"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Verifica embargos ambientais ativos do IBAMA"
+                - name: "PRODES Deforestation"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Detecta desmatamento em coordenadas geográficas (INPE)"
+
+  /health:
+    get:
+      tags:
+        - health
+      summary: Health check
+      description: |
+        Verifica status de saúde da API e serviços dependentes.
+
+        **Status possíveis:**
+        - `ok`: Todos os serviços operacionais
+        - `degraded`: Alguns serviços offline mas API ainda funcional
+        - `down`: API não operacional
+
+        **Serviços monitorados:**
+        - Database (PostgreSQL + PostGIS)
+        - Cache (Redis)
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: API operacional
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "ok"
+                timestamp: "2026-01-29T10:30:00.000Z"
+                version: "1.0.0"
+                services:
+                  database: "ok"
+                  redis: "ok"
+        '503':
+          description: API indisponível ou degradada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: "degraded"
+                timestamp: "2026-01-29T10:30:00.000Z"
+                version: "1.0.0"
+                services:
+                  database: "ok"
+                  redis: "down"
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key para autenticação. Formato: `ck_` + 64 caracteres hexadecimais.
+
+        Entre em contato com o time DeFarm para obter uma API key.
+
+        **Rate limit:** 10,000 requisições/minuto por key.
+
+  schemas:
+    CheckRequest:
+      type: object
+      required:
+        - input
+      properties:
+        input:
+          type: object
+          required:
+            - type
+            - value
+          properties:
+            type:
+              type: string
+              enum:
+                - CNPJ
+                - CPF
+                - CAR
+                - COORDINATES
+              description: Tipo do input a ser verificado
+            value:
+              oneOf:
+                - type: string
+                  description: CNPJ, CPF ou CAR (com ou sem formatação)
+                - type: object
+                  description: Coordenadas geográficas
+                  required:
+                    - lat
+                    - lon
+                  properties:
+                    lat:
+                      type: number
+                      format: float
+                      minimum: -90
+                      maximum: 90
+                      description: Latitude em decimal (WGS84)
+                    lon:
+                      type: number
+                      format: float
+                      minimum: -180
+                      maximum: 180
+                      description: Longitude em decimal (WGS84)
+        options:
+          type: object
+          description: Opções adicionais para a verificação
+          properties:
+            sources:
+              type: array
+              items:
+                type: string
+              description: Lista de checkers específicos a executar (opcional)
+            useCache:
+              type: boolean
+              default: true
+              description: Usar cache para acelerar resposta
+            includeEvidence:
+              type: boolean
+              default: true
+              description: Incluir evidências e links para fontes
+            timeout:
+              type: integer
+              default: 15000
+              description: Timeout em milissegundos para cada checker
+
+    CheckResponse:
+      type: object
+      required:
+        - checkId
+        - input
+        - timestamp
+        - verdict
+        - score
+        - sources
+        - summary
+        - metadata
+      properties:
+        checkId:
+          type: string
+          format: uuid
+          description: ID único da verificação
+        input:
+          type: object
+          properties:
+            type:
+              type: string
+            value:
+              oneOf:
+                - type: string
+                - type: object
+          description: Input original da requisição
+        timestamp:
+          type: string
+          format: date-time
+          description: Data/hora da verificação (ISO 8601)
+        verdict:
+          type: string
+          enum:
+            - COMPLIANT
+            - NON_COMPLIANT
+            - PARTIAL
+            - UNKNOWN
+          description: |
+            Veredito final agregado:
+            - `COMPLIANT`: Totalmente conforme (score = 100)
+            - `NON_COMPLIANT`: Não conforme (score < 80)
+            - `PARTIAL`: Parcialmente conforme (80 ≤ score < 100)
+            - `UNKNOWN`: Erro ao executar verificação
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: |
+            Score de compliance (0-100):
+            - 100 = Totalmente conforme
+            - 80-99 = Parcialmente conforme
+            - 0-79 = Não conforme
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/SourceResult'
+          description: Resultado de cada checker executado
+        summary:
+          type: object
+          required:
+            - totalCheckers
+            - passed
+            - failed
+            - warnings
+            - errors
+          properties:
+            totalCheckers:
+              type: integer
+              description: Total de checkers executados
+            passed:
+              type: integer
+              description: Checkers que passaram (PASS)
+            failed:
+              type: integer
+              description: Checkers que falharam (FAIL)
+            warnings:
+              type: integer
+              description: Checkers com alertas (WARNING)
+            errors:
+              type: integer
+              description: Checkers com erro de execução
+            notApplicable:
+              type: integer
+              description: Checkers não aplicáveis ao input
+        metadata:
+          type: object
+          required:
+            - processingTimeMs
+            - cacheHitRate
+            - apiVersion
+            - timestamp
+          properties:
+            processingTimeMs:
+              type: integer
+              description: Tempo total de processamento em ms
+            cacheHitRate:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 1
+              description: Taxa de cache hits (0-1)
+            apiVersion:
+              type: string
+              description: Versão da API
+            timestamp:
+              type: string
+              format: date-time
+
+    SourceResult:
+      type: object
+      required:
+        - name
+        - category
+        - status
+        - message
+      properties:
+        name:
+          type: string
+          description: Nome da fonte/checker
+        category:
+          type: string
+          enum:
+            - social
+            - environmental
+            - legal
+          description: Categoria do checker
+        status:
+          type: string
+          enum:
+            - PASS
+            - FAIL
+            - WARNING
+            - ERROR
+            - NOT_APPLICABLE
+          description: |
+            Status do check:
+            - `PASS`: Conforme (nenhum problema encontrado)
+            - `FAIL`: Não conforme (problema detectado)
+            - `WARNING`: Alerta (atenção necessária)
+            - `ERROR`: Erro ao executar checker
+            - `NOT_APPLICABLE`: Checker não aplicável ao input
+        severity:
+          type: string
+          enum:
+            - LOW
+            - MEDIUM
+            - HIGH
+            - CRITICAL
+          description: |
+            Severidade do problema (apenas quando status = FAIL):
+            - `LOW`: Problema menor
+            - `MEDIUM`: Problema moderado
+            - `HIGH`: Problema grave
+            - `CRITICAL`: Problema crítico (bloqueante)
+        message:
+          type: string
+          description: Mensagem descritiva do resultado
+        details:
+          type: object
+          description: Detalhes específicos do resultado (varia por checker)
+        evidence:
+          type: object
+          properties:
+            dataSource:
+              type: string
+              description: Nome da fonte de dados oficial
+            url:
+              type: string
+              format: uri
+              description: URL da fonte de dados
+            lastUpdate:
+              type: string
+              format: date
+              description: Data da última atualização dos dados
+            raw:
+              type: object
+              description: Dados brutos da fonte (opcional)
+        executionTimeMs:
+          type: integer
+          description: Tempo de execução do checker em ms
+        cached:
+          type: boolean
+          description: Se o resultado veio do cache
+
+    SourceInfo:
+      type: object
+      required:
+        - name
+        - category
+        - enabled
+        - status
+        - description
+      properties:
+        name:
+          type: string
+          description: Nome da fonte de dados
+        category:
+          type: string
+          enum:
+            - social
+            - environmental
+            - legal
+          description: Categoria da fonte
+        enabled:
+          type: boolean
+          description: Se a fonte está habilitada
+        status:
+          type: string
+          enum:
+            - operational
+            - down
+            - maintenance
+          description: Status operacional da fonte
+        description:
+          type: string
+          description: Descrição da fonte e o que ela verifica
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+        - version
+        - services
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - degraded
+            - down
+          description: Status geral da API
+        timestamp:
+          type: string
+          format: date-time
+          description: Data/hora da verificação
+        version:
+          type: string
+          description: Versão da API
+        services:
+          type: object
+          required:
+            - database
+            - redis
+          properties:
+            database:
+              type: string
+              enum:
+                - ok
+                - down
+              description: Status do PostgreSQL + PostGIS
+            redis:
+              type: string
+              enum:
+                - ok
+                - down
+              description: Status do Redis (cache)
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+        - statusCode
+      properties:
+        error:
+          type: string
+          description: Nome do erro
+        message:
+          type: string
+          description: Mensagem descritiva do erro
+        statusCode:
+          type: integer
+          description: Código HTTP do erro
+        details:
+          type: array
+          items:
+            type: object
+          description: Detalhes adicionais (validação, etc)
