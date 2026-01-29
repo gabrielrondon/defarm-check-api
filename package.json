@@ -20,6 +20,8 @@
     "seed:deter": "tsx scripts/seed-deter.ts",
     "data:funai-terras-indigenas": "tsx scripts/download-terras-indigenas.ts",
     "seed:terras-indigenas": "tsx scripts/seed-terras-indigenas.ts",
+    "data:icmbio-unidades-conservacao": "tsx scripts/download-unidades-conservacao.ts",
+    "seed:unidades-conservacao": "tsx scripts/seed-unidades-conservacao.ts",
     "seed:lista-suja-simple": "tsx scripts/seed-lista-suja-simple.ts",
     "seed:ibama-simple": "tsx scripts/seed-ibama-simple.ts",
     "data:all": "npm run data:lista-suja && npm run data:ibama && npm run data:prodes",

@@ -89,6 +89,22 @@ export const terrasIndigenas = pgTable('terras_indigenas', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 });
 
+// Tabela de Unidades de Conservação (ICMBio)
+// Nota: geometria será gerenciada via SQL direto (PostGIS)
+export const unidadesConservacao = pgTable('unidades_conservacao', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(), // Nome da UC
+  category: varchar('category', { length: 100 }), // Categoria (Parque, Reserva, etc)
+  group: varchar('group', { length: 50 }), // Proteção Integral ou Uso Sustentável
+  areaHa: integer('area_ha'), // Área em hectares
+  state: varchar('state', { length: 2 }),
+  municipality: varchar('municipality', { length: 255 }),
+  sphere: varchar('sphere', { length: 50 }), // Federal, Estadual, Municipal
+  source: varchar('source', { length: 50 }).default('ICMBio'),
+  // geometria será adicionada via SQL: geometry(MULTIPOLYGON, 4326)
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
 // Tabela Lista Suja do Trabalho Escravo (MTE)
 export const listaSuja = pgTable('lista_suja', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -145,6 +161,13 @@ export const terrasIndigenasIdx = {
   nameIdx: 'idx_terras_indigenas_name',
   stateIdx: 'idx_terras_indigenas_state',
   phaseIdx: 'idx_terras_indigenas_phase'
+};
+
+export const unidadesConservacaoIdx = {
+  nameIdx: 'idx_unidades_conservacao_name',
+  stateIdx: 'idx_unidades_conservacao_state',
+  groupIdx: 'idx_unidades_conservacao_group',
+  categoryIdx: 'idx_unidades_conservacao_category'
 };
 
 // Tabela de API Keys para autenticação
