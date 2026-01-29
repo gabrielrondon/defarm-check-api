@@ -105,6 +105,23 @@ export const unidadesConservacao = pgTable('unidades_conservacao', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 });
 
+// Tabela de CAR - Cadastro Ambiental Rural (SICAR)
+// Nota: geometria será gerenciada via SQL direto (PostGIS)
+export const carRegistrations = pgTable('car_registrations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  carNumber: varchar('car_number', { length: 50 }).notNull().unique(), // Número do CAR
+  status: varchar('status', { length: 50 }), // Ativo, Pendente, Cancelado, Suspenso
+  ownerDocument: varchar('owner_document', { length: 20 }), // CPF/CNPJ do proprietário
+  ownerName: text('owner_name'), // Nome do proprietário
+  propertyName: text('property_name'), // Nome da propriedade
+  areaHa: integer('area_ha'), // Área em hectares
+  state: varchar('state', { length: 2 }).notNull(),
+  municipality: varchar('municipality', { length: 255 }),
+  source: varchar('source', { length: 50 }).default('SICAR'),
+  // geometria será adicionada via SQL: geometry(MULTIPOLYGON, 4326)
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
 // Tabela Lista Suja do Trabalho Escravo (MTE)
 export const listaSuja = pgTable('lista_suja', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -168,6 +185,13 @@ export const unidadesConservacaoIdx = {
   stateIdx: 'idx_unidades_conservacao_state',
   groupIdx: 'idx_unidades_conservacao_group',
   categoryIdx: 'idx_unidades_conservacao_category'
+};
+
+export const carRegistrationsIdx = {
+  carNumberIdx: 'idx_car_registrations_car_number',
+  stateIdx: 'idx_car_registrations_state',
+  statusIdx: 'idx_car_registrations_status',
+  ownerDocumentIdx: 'idx_car_registrations_owner_document'
 };
 
 // Tabela de API Keys para autenticação

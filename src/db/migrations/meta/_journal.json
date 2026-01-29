@@ -64,6 +64,13 @@
       "when": 1769689514185,
       "tag": "0008_lumpy_patriot",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1769692111913,
+      "tag": "0009_petite_elektra",
+      "breakpoints": true
     }
   ]
 }
