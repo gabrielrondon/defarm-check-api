@@ -27,7 +27,9 @@
       "WebFetch(domain:railway.com)",
       "WebFetch(domain:terrabrasilis.dpi.inpe.br)",
       "Bash(npm run data:prodes:*)",
-      "Bash(PGPASSWORD=gA22AgAddGceGg55Dd62d6b3EaD32bg5 psql:*)"
+      "Bash(PGPASSWORD=gA22AgAddGceGg55Dd62d6b3EaD32bg5 psql:*)",
+      "Bash(redis-cli ping:*)",
+      "Bash(redis-cli:*)"
     ]
   }
 }

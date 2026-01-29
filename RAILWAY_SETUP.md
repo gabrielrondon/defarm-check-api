@@ -12,11 +12,14 @@
 
 ## Setup Steps
 
-### 1. Add Redis Service
+### 1. Add Redis Service ✅ COMPLETED
 
-1. Go to Railway project: https://railway.app/project/54217b47-61c5-4dcf-ae17-2ec0c7a249f0
-2. Click "+ New" → "Database" → "Add Redis"
-3. Copy the `REDIS_URL` from the Redis service "Connect" tab
+Redis service has been created with these credentials:
+- **Internal URL** (for Railway services): `redis://default:xiAPMUNayRBGxVOjsDzHxLmlHlFgDGYR@redis.railway.internal:6379`
+- **Public URL** (for external access): `redis://default:xiAPMUNayRBGxVOjsDzHxLmlHlFgDGYR@maglev.proxy.rlwy.net:49379`
+- **Password**: `xiAPMUNayRBGxVOjsDzHxLmlHlFgDGYR`
+
+✅ Tested and working from local environment
 
 ### 2. Deploy Check API
 
@@ -39,11 +42,13 @@ NODE_ENV=production
 PORT=3000
 HOST=0.0.0.0
 
-# Database (already created - PostGIS service)
+# Database (PostGIS service named "caboose")
 DATABASE_URL=${{caboose.DATABASE_URL}}
 
-# Redis (from Redis service you just created)
+# Redis (use internal URL for better performance within Railway)
+# Railway auto-provides this as ${{Redis.REDIS_URL}}
 REDIS_URL=${{Redis.REDIS_URL}}
+REDIS_PASSWORD=${{Redis.REDIS_PASSWORD}}
 
 # API Security
 API_SECRET=<generate-a-secure-secret-here>
@@ -124,9 +129,36 @@ npm run data:prodes
 
 **Recommended:** Keep large data files local and access Railway DB remotely.
 
+## Redis URLs Explained
+
+Railway provides two types of URLs for Redis:
+
+**1. Internal URL** (recommended for production):
+```
+redis://default:password@redis.railway.internal:6379
+```
+- Used by services running **inside** Railway
+- Faster (no external network)
+- Free bandwidth (no egress costs)
+- Use this in production environment variables
+
+**2. Public URL** (for external access):
+```
+redis://default:password@maglev.proxy.rlwy.net:49379
+```
+- Used from **outside** Railway (e.g., your local machine)
+- Useful for debugging production data
+- Incurs egress bandwidth costs
+- Use this in local `.env` for testing production data
+
+**Configuration:**
+- **Local development**: Use `REDIS_PUBLIC_URL` in `.env`
+- **Railway production**: Use `${{Redis.REDIS_URL}}` (internal URL)
+
 ## Production Checklist
 
-- [ ] Redis service created
+- [x] Redis service created and tested
+- [ ] Check API service deployed to Railway
 - [ ] Environment variables configured
 - [ ] API_SECRET changed to secure value
 - [ ] LOG_PRETTY=false (JSON logging for production)
