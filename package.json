@@ -38,6 +38,7 @@
     "test:telegram": "tsx scripts/test-telegram.ts",
     "seed:lista-suja-simple": "tsx scripts/seed-lista-suja-simple.ts",
     "seed:ibama-simple": "tsx scripts/seed-ibama-simple.ts",
+    "seed:all-production": "tsx scripts/seed-all-production.ts",
     "data:all": "npm run data:lista-suja && npm run data:ibama && npm run data:prodes",
     "test": "vitest",
     "test:coverage": "vitest --coverage",

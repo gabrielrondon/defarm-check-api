@@ -379,6 +379,8 @@ src/
 - [Integration Guide](./docs/INTEGRATION.md) - Guia de integração detalhado
 - [Examples](./docs/EXAMPLES.md) - Exemplos práticos com casos reais
 - [Railway Setup](./RAILWAY_SETUP.md) - Deploy no Railway
+- [Seed Production](./docs/SEED_PRODUCTION.md) - Como popular banco de produção com dados
+- [Seed Railway](./docs/SEED_RAILWAY.md) - Como popular banco no Railway especificamente
 - [Swagger/OpenAPI](https://defarm-check-api-production.up.railway.app/docs) - Documentação interativa
 
 ## 🗺️ Roadmap

@@ -208,8 +208,6 @@ async function main() {
 }
 
 // Run
-if (require.main === module) {
-  main();
-}
+main();
 
 export { downloadTerrasIndigenas, geojsonToWKT };

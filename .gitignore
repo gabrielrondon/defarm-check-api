@@ -33,6 +33,9 @@ Thumbs.db
 *.swo
 *~
 
+# Claude Code local settings (may contain credentials)
+.claude/settings.local.json
+
 # Testing
 coverage/
 .nyc_output/
@@ -46,5 +49,7 @@ tmp/
 data/*.csv
 data/*.zip
 data/*.xlsx
-data/ibama_embargos.json
-data/lista_suja.json
+data/*.json
+data/*.geojson
+data/*.shp
+data/*.dbf

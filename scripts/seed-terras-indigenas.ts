@@ -54,24 +54,91 @@ async function seedTerrasIndigenas(filepath: string) {
   logger.info('Clearing existing Terras Indígenas');
   await db.execute(sql`TRUNCATE TABLE terras_indigenas CASCADE`);
 
-  // Batch insert
+  // Batch insert - very small size due to extremely large geometries (max 2.8MB)
+  const BATCH_SIZE = 5;
+  const MAX_GEOMETRY_SIZE_FOR_BATCH = 500000; // 500KB - geometrias maiores vão individual
   let inserted = 0;
-  const batchSize = 50;  // Geometrias podem ser grandes
+  let failed = 0;
 
-  for (let i = 0; i < terras.length; i += batchSize) {
-    const batch = terras.slice(i, i + batchSize);
+  for (let i = 0; i < terras.length; i += BATCH_SIZE) {
+    const batch = terras.slice(i, i + BATCH_SIZE);
 
-    const values = batch.map(terra => {
+    // Separar registros com geometrias muito grandes
+    const largeBatch = batch.filter(t => t.geometry.length > MAX_GEOMETRY_SIZE_FOR_BATCH);
+    const normalBatch = batch.filter(t => t.geometry.length <= MAX_GEOMETRY_SIZE_FOR_BATCH);
+
+    // Inserir geometrias grandes individualmente desde o início
+    for (const terra of largeBatch) {
+      try {
+        const name = terra.name && terra.name.trim() ? terra.name.trim() : 'Terra Indígena';
+        // Pegar só o primeiro estado se houver múltiplos (schema permite apenas 2 chars)
+        const state = terra.state ? terra.state.split(',')[0].trim() : null;
+
+        await db.execute(sql`
+          INSERT INTO terras_indigenas (
+            name, etnia, phase, area_ha, state, municipality, modalidade, source, geometry
+          ) VALUES (
+            ${name},
+            ${terra.etnia || null},
+            ${terra.phase || null},
+            ${terra.areaHa || 0},
+            ${state},
+            ${terra.municipality || null},
+            ${terra.modalidade || null},
+            'FUNAI',
+            ST_SimplifyPreserveTopology(ST_Multi(ST_GeomFromText(${terra.geometry}, 4326)), 0.001)
+          )
+          ON CONFLICT DO NOTHING
+        `);
+        inserted++;
+        logger.info('Large geometry inserted individually', {
+          name: name,
+          size: Math.round(terra.geometry.length / 1024) + 'KB'
+        });
+      } catch (err) {
+        // Extract actual PostgreSQL error from drizzle error
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        const pgError = errorMsg.split('\n').find(line =>
+          line.includes('ERROR:') || line.includes('error:') || line.includes('violates')
+        ) || errorMsg.slice(0, 300);
+
+        logger.error('Large geometry insert failed', {
+          name: terra.name || 'Terra Indígena',
+          etnia: terra.etnia,
+          state: terra.state,
+          size: Math.round(terra.geometry.length / 1024) + 'KB',
+          error: pgError
+        });
+        failed++;
+      }
+    }
+
+    // Continuar com batch normal se houver
+    if (normalBatch.length === 0) {
+      continue;
+    }
+
+    // Build VALUES clause (following seed-unidades-conservacao.ts pattern)
+    const values = normalBatch.map(terra => {
+      const escapeSql = (str: string | null | undefined) =>
+        str ? `'${str.replace(/'/g, "''")}'` : 'NULL';
+
+      // Nome é obrigatório - usar valor padrão se vazio
+      const name = terra.name && terra.name.trim() ? terra.name.trim() : 'Terra Indígena';
+
+      // Escapar geometria para SQL
+      const geometry = terra.geometry.replace(/'/g, "''");
+
       return `(
-        ${terra.name ? `'${terra.name.replace(/'/g, "''")}'` : 'NULL'},
-        ${terra.etnia ? `'${terra.etnia.replace(/'/g, "''")}'` : 'NULL'},
-        ${terra.phase ? `'${terra.phase.replace(/'/g, "''")}'` : 'NULL'},
+        ${escapeSql(name)},
+        ${escapeSql(terra.etnia)},
+        ${escapeSql(terra.phase)},
         ${terra.areaHa || 0},
         ${terra.state ? `'${terra.state}'` : 'NULL'},
-        ${terra.municipality ? `'${terra.municipality.replace(/'/g, "''")}'` : 'NULL'},
-        ${terra.modalidade ? `'${terra.modalidade.replace(/'/g, "''")}'` : 'NULL'},
+        ${escapeSql(terra.municipality)},
+        ${escapeSql(terra.modalidade)},
         'FUNAI',
-        ST_GeomFromText('${terra.geometry}', 4326)
+        ST_SimplifyPreserveTopology(ST_Multi(ST_GeomFromText('${geometry}', 4326)), 0.001)
       )`;
     }).join(',\n');
 
@@ -86,16 +153,73 @@ async function seedTerrasIndigenas(filepath: string) {
         modalidade,
         source,
         geometry
-      ) VALUES ${values};
+      ) VALUES ${values}
+      ON CONFLICT DO NOTHING;
     `;
 
-    await db.execute(sql.raw(query));
+    // Error handling (following seed-car.ts pattern)
+    try {
+      await db.execute(sql.raw(query));
+      inserted += normalBatch.length;
+      logger.info('Batch inserted', {
+        batch: Math.floor(i / BATCH_SIZE) + 1,
+        records: normalBatch.length,
+        inserted,
+        total: terras.length
+      });
+    } catch (error) {
+      logger.warn('Batch insert failed, falling back to individual inserts', {
+        batch: Math.floor(i / BATCH_SIZE) + 1,
+        error: error instanceof Error ? error.message : String(error).slice(0, 500)
+      });
 
-    inserted += batch.length;
-    logger.info('Progress', { inserted, total: terras.length });
+      // Fallback: insert one by one for this batch only
+      for (const terra of normalBatch) {
+        try {
+          const name = terra.name && terra.name.trim() ? terra.name.trim() : 'Terra Indígena';
+
+          await db.execute(sql`
+            INSERT INTO terras_indigenas (
+              name, etnia, phase, area_ha, state, municipality, modalidade, source, geometry
+            ) VALUES (
+              ${name},
+              ${terra.etnia || null},
+              ${terra.phase || null},
+              ${terra.areaHa || 0},
+              ${terra.state || null},
+              ${terra.municipality || null},
+              ${terra.modalidade || null},
+              'FUNAI',
+              ST_SimplifyPreserveTopology(ST_Multi(ST_GeomFromText(${terra.geometry}, 4326)), 0.001)
+            )
+            ON CONFLICT DO NOTHING
+          `);
+          inserted++;
+        } catch (err) {
+          // Extract actual PostgreSQL error from drizzle error
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          const pgError = errorMsg.split('\n').find(line =>
+            line.includes('ERROR:') || line.includes('error:') || line.includes('violates')
+          ) || errorMsg.slice(0, 300);
+
+          logger.error('Individual insert failed', {
+            name: terra.name || 'Terra Indígena',
+            etnia: terra.etnia,
+            state: terra.state,
+            geometrySize: Math.round(terra.geometry.length / 1024) + 'KB',
+            error: pgError
+          });
+          failed++;
+        }
+      }
+    }
   }
 
-  logger.info('✅ Terras Indígenas seeded successfully', { inserted });
+  logger.info('✅ Terras Indígenas seeded successfully', {
+    inserted,
+    failed,
+    total: terras.length
+  });
 
   // Stats finais
   const stats = await db.execute(sql`
@@ -130,8 +254,6 @@ async function main() {
   }
 }
 
-if (require.main === module) {
-  main();
-}
+main();
 
 export { seedTerrasIndigenas };
