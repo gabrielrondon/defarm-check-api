@@ -2,24 +2,32 @@
  * CAR Checker - Verifica regularização ambiental via CAR
  *
  * Fonte: SICAR - Sistema Nacional de Cadastro Ambiental Rural
- * Cobertura: Estados prioritários MT, PA, GO (90% do agro brasileiro)
+ * Cobertura: Estados prioritários (MT, PA, GO, MS, RS, PR, SP, MG, BA, TO = 90% do agro)
+ *
+ * ESTRATÉGIA OTIMIZADA (Risk-Based):
+ * - Dataset contém APENAS CAR irregulares (Cancelado, Suspenso, Pendente)
+ * - Lógica invertida: NÃO encontrar = presumivelmente regular ✅
+ * - Redução de ~2M registros para ~20-50k (viável para Railway)
  *
  * O que verifica:
- * - Se coordenadas caem em propriedade com CAR válido
- * - Status do CAR (Ativo, Pendente, Cancelado, Suspenso)
+ * - Se coordenadas caem em propriedade com CAR IRREGULAR
+ * - Status: Cancelado, Suspenso, Pendente
  * - Dados do proprietário para rastreabilidade
  *
- * Impacto Legal:
- * - NÃO ter CAR = IRREGULARIDADE GRAVE (Lei 12.651/2012 - Código Florestal)
- * - CAR obrigatório para produtores desde 2014
- * - Sem CAR: impossível obter crédito rural, licenças, comercializar
- * - TACs de frigoríficos exigem CAR ativo
+ * Lógica de resultado:
+ * - NÃO encontrou CAR irregular = PASS ✅ (presumivelmente regular)
+ * - Encontrou CAR CANCELADO/SUSPENSO = FAIL CRITICAL ❌
+ * - Encontrou CAR PENDENTE = FAIL HIGH ⚠️
  *
- * IMPORTANTE:
- * - TER CAR ATIVO = PASS (regularizado) ✅
- * - NÃO TER CAR = FAIL (irregular) ❌
- * - CAR CANCELADO/SUSPENSO = FAIL (irregular) ❌
- * - CAR PENDENTE = WARNING (em regularização) ⚠️
+ * Limitações:
+ * - Não cobre todos os 27 estados (apenas 10 prioritários)
+ * - Não detecta "ausência de CAR" (apenas CAR irregular)
+ * - Para cobertura 100%, usar API oficial SICAR (mais lento)
+ *
+ * Impacto Legal:
+ * - CAR obrigatório para produtores desde 2014 (Lei 12.651/2012)
+ * - Sem CAR/CAR irregular: impossível obter crédito, licenças, comercializar
+ * - TACs de frigoríficos exigem CAR ativo
  */
 
 import { BaseChecker } from '../base.js';
