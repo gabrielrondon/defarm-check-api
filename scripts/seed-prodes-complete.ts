@@ -161,17 +161,35 @@ async function seedFile(filepath: string, batchSize: number = 500): Promise<numb
 
     logger.info(`Processing batch ${batchNum}/${totalBatches} (${batch.length} features)`);
 
-    // Batch insert with a single query per batch
+    // Prepare batch data
+    const batchData: Array<{
+      normalized: ReturnType<typeof normalizeProperties>;
+      geomJson: string;
+    }> = [];
+
     for (const feature of batch) {
       try {
         const normalized = normalizeProperties(feature.properties);
         const geomJson = JSON.stringify(feature.geometry);
+        batchData.push({ normalized, geomJson });
+      } catch (error) {
+        failed++;
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (errors.length < 10) {
+          errors.push(errorMsg);
+        }
+      }
+    }
 
-        // Single INSERT with geometry - much faster than INSERT + UPDATE
-        await db.execute(sql`
-          INSERT INTO prodes_deforestation (
-            year, area_km2, state, municipality, class_name, path_row, image_date, source, geom
-          ) VALUES (
+    // Build bulk INSERT query with all rows in batch
+    if (batchData.length > 0) {
+      try {
+        // Build VALUES clause dynamically
+        const valuesClauses: any[] = [];
+
+        for (const item of batchData) {
+          const { normalized, geomJson } = item;
+          valuesClauses.push(sql`(
             ${normalized.year},
             ${normalized.areaKm2},
             ${normalized.state},
@@ -181,14 +199,22 @@ async function seedFile(filepath: string, batchSize: number = 500): Promise<numb
             ${normalized.imageDate},
             ${normalized.source},
             ST_SetSRID(ST_GeomFromGeoJSON(${geomJson}), 4326)
-          )
+          )`);
+        }
+
+        // Execute single bulk INSERT for entire batch
+        await db.execute(sql`
+          INSERT INTO prodes_deforestation (
+            year, area_km2, state, municipality, class_name, path_row, image_date, source, geom
+          ) VALUES ${sql.join(valuesClauses, sql`, `)}
         `);
 
-        inserted++;
+        inserted += batchData.length;
 
       } catch (error) {
-        failed++;
+        failed += batchData.length;
         const errorMsg = error instanceof Error ? error.message : String(error);
+        logger.error('Batch insert failed', { error: errorMsg, batchSize: batchData.length });
         if (errors.length < 10) {
           errors.push(errorMsg);
         }
