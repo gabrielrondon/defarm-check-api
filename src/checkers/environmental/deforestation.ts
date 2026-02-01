@@ -24,7 +24,7 @@ export class DeforestationChecker extends BaseChecker {
   readonly config: CheckerConfig = {
     enabled: true,
     cacheTTL: 604800, // 7 dias (dados atualizados mensalmente)
-    timeout: 15000
+    timeout: 8000 // 8s (benchmark PRODES P95: 51ms, mas dataset completo pode ser maior)
   };
 
   async executeCheck(input: NormalizedInput): Promise<CheckerResult> {

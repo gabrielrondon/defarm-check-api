@@ -42,7 +42,7 @@ export class ConservationUnitChecker extends BaseChecker {
   readonly config: CheckerConfig = {
     enabled: true,
     cacheTTL: 2592000,  // 30 dias (UCs não mudam rápido)
-    timeout: 10000  // 10s
+    timeout: 5000  // 5s (queries geoespaciais: P95 ~50ms esperado)
   };
 
   /**

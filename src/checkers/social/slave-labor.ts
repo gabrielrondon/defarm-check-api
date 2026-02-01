@@ -25,7 +25,7 @@ export class SlaveLaborChecker extends BaseChecker {
   readonly config: CheckerConfig = {
     enabled: true,
     cacheTTL: 86400, // 24 horas (lista atualiza semestralmente)
-    timeout: 5000
+    timeout: 3000 // 3s (queries de documento são rápidas: P95 ~10ms)
   };
 
   async executeCheck(input: NormalizedInput): Promise<CheckerResult> {

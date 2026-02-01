@@ -41,7 +41,7 @@ export class IndigenousLandChecker extends BaseChecker {
   readonly config: CheckerConfig = {
     enabled: true,
     cacheTTL: 2592000,  // 30 dias (TIs não mudam rápido)
-    timeout: 10000  // 10s
+    timeout: 5000  // 5s (benchmark P95: 49ms em produção)
   };
 
   /**

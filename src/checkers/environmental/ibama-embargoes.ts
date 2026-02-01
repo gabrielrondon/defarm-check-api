@@ -25,7 +25,7 @@ export class IbamaEmbargoesChecker extends BaseChecker {
   readonly config: CheckerConfig = {
     enabled: true,
     cacheTTL: 604800, // 7 dias (dados atualizados diariamente, mas estáveis)
-    timeout: 5000
+    timeout: 3000 // 3s (queries de documento são rápidas: P95 ~10ms)
   };
 
   async executeCheck(input: NormalizedInput): Promise<CheckerResult> {

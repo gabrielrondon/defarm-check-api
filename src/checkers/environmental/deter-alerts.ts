@@ -39,7 +39,7 @@ export class DeterAlertChecker extends BaseChecker {
   readonly config: CheckerConfig = {
     enabled: true,
     cacheTTL: 86400,  // 24h (alertas mudam diariamente)
-    timeout: 10000  // 10s (query espacial pode ser lenta)
+    timeout: 5000  // 5s (benchmark mostra queries espaciais ~50ms em prod)
   };
 
   /**
