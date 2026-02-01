@@ -41,6 +41,8 @@
     "data:mapbiomas-alerta-older": "tsx scripts/download-mapbiomas-alerta.ts --months=6 --offset=6 --output=mapbiomas_alerta_older.json",
     "data:mapbiomas-alerta-merge": "node -e \"const fs=require('fs'); const r=JSON.parse(fs.readFileSync('data/mapbiomas_alerta_recent.json')); const o=JSON.parse(fs.readFileSync('data/mapbiomas_alerta_older.json')); fs.writeFileSync('data/mapbiomas_alerta.json', JSON.stringify([...r,...o], null, 2)); console.log('Merged:', r.length + o.length, 'alerts')\"",
     "seed:mapbiomas-alerta": "tsx scripts/seed-mapbiomas-alerta.ts",
+    "data:ana-outorgas": "tsx scripts/download-ana-outorgas.ts",
+    "seed:ana-outorgas": "tsx scripts/seed-ana-outorgas.ts",
     "cron:setup": "bash scripts/cron/setup-cron.sh",
     "cron:test-deter": "tsx scripts/cron/update-deter.ts",
     "cron:test-lista-suja": "tsx scripts/cron/update-lista-suja.ts",

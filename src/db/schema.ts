@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, integer, boolean, jsonb, timestamp, date } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, integer, boolean, jsonb, timestamp, date, doublePrecision } from 'drizzle-orm/pg-core';
 
 // Histórico de todas as verificações
 export const checkRequests = pgTable('check_requests', {
@@ -305,6 +305,37 @@ export const mapbiomasAlertaIdx = {
   biomeIdx: 'idx_mapbiomas_alerta_biome',
   deforestationClassIdx: 'idx_mapbiomas_alerta_deforestation_class',
   embargoedAreaIdx: 'idx_mapbiomas_alerta_embargoed_area'
+};
+
+// Tabela de Outorgas (ANA) - Water Use Permits
+export const anaOutorgas = pgTable('ana_outorgas', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  intCd: varchar('int_cd', { length: 50 }), // Internal code
+  numeroProcesso: varchar('numero_processo', { length: 100 }), // Process number
+  codigoCnarh: varchar('codigo_cnarh', { length: 50 }), // CNARH registry code
+  nomeRequerente: varchar('nome_requerente', { length: 500 }), // Requester name
+  municipio: varchar('municipio', { length: 255 }),
+  uf: varchar('uf', { length: 2 }),
+  corpoHidrico: varchar('corpo_hidrico', { length: 255 }), // Water body
+  regiaoHidrografica: varchar('regiao_hidrografica', { length: 255 }), // Hydrographic region
+  finalidadePrincipal: varchar('finalidade_principal', { length: 100 }), // Main purpose (Irrigação, Indústria, etc.)
+  tipoInterferencia: varchar('tipo_interferencia', { length: 100 }), // Interference type (Captação, Lançamento, etc.)
+  resolucao: varchar('resolucao', { length: 100 }), // Resolution number
+  dataPublicacao: date('data_publicacao'), // Publication date
+  dataVencimento: date('data_vencimento'), // Expiration date
+  categoria: varchar('categoria', { length: 50 }), // Category (Direito de Uso, Outorga Preventiva)
+  volumeAnualM3: integer('volume_anual_m3'), // Annual volume in m³
+  latitude: doublePrecision('latitude'),
+  longitude: doublePrecision('longitude'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
+export const anaOutorgasIdx = {
+  codigoCnarhIdx: 'idx_ana_outorgas_codigo_cnarh',
+  ufIdx: 'idx_ana_outorgas_uf',
+  categoriaIdx: 'idx_ana_outorgas_categoria',
+  dataVencimentoIdx: 'idx_ana_outorgas_data_vencimento',
+  finalidadeIdx: 'idx_ana_outorgas_finalidade'
 };
 
 // Tabela de API Keys para autenticação

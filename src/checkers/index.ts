@@ -16,6 +16,7 @@ import { IndigenousLandChecker } from './environmental/indigenous-lands.js';
 import { ConservationUnitChecker } from './environmental/conservation-units.js';
 import { QueimadasChecker } from './environmental/queimadas.js';
 import { MapBiomasAlertaChecker } from './environmental/mapbiomas-alerta.js';
+import { AnaOutorgasChecker } from './environmental/ana-outorgas.js';
 
 // Positive checkers (certifications, compliance indicators)
 import { MapaOrganicosChecker } from './positive/mapa-organicos.js';
@@ -32,6 +33,7 @@ checkerRegistry.register(new ConservationUnitChecker());
 checkerRegistry.register(new QueimadasChecker());
 checkerRegistry.register(new MapBiomasAlertaChecker());
 checkerRegistry.register(new MapaOrganicosChecker());
+checkerRegistry.register(new AnaOutorgasChecker());
 
 export { checkerRegistry };
 export * from './base.js';
