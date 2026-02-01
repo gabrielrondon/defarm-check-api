@@ -135,7 +135,7 @@ function normalizeProperties(props: any): {
   };
 }
 
-async function seedFile(filepath: string, batchSize: number = 500): Promise<number> {
+async function seedFile(filepath: string, batchSize: number = 50): Promise<number> {
   const filename = path.basename(filepath);
   logger.info(`Reading ${filename}...`);
 
