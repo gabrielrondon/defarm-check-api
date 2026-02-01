@@ -17,6 +17,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { createLogger, format, transports } from 'winston';
+import { retryFetch, GOVERNMENT_API_RETRY_CONFIG } from '../src/utils/retry.js';
 
 const logger = createLogger({
   level: 'info',
@@ -74,15 +75,12 @@ async function downloadDeterAlerts(startDate: string, endDate: string): Promise<
   logger.info('Fetching from WFS', { url: url.slice(0, 150) + '...' });
 
   try {
-    const response = await fetch(url, {
+    // Use retry logic for unstable government APIs
+    const response = await retryFetch(url, {
       headers: {
         'User-Agent': 'DeFarm-CheckAPI/1.0'
       }
-    });
-
-    if (!response.ok) {
-      throw new Error(`WFS request failed: ${response.status} ${response.statusText}`);
-    }
+    }, GOVERNMENT_API_RETRY_CONFIG);
 
     const data = await response.json();
 
@@ -228,8 +226,8 @@ async function main() {
   }
 }
 
-// Run
-if (require.main === module) {
+// Run if executed directly (ES modules)
+if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 }
 
