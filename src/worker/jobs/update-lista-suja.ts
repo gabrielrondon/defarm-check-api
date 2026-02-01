@@ -11,6 +11,7 @@ import { sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
 import { telegram } from '../../services/telegram.js';
 import { cacheService } from '../../services/cache.js';
+import { updateDataSourceFreshness } from '../../utils/data-freshness.js';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -78,6 +79,13 @@ export async function updateListaSuja(): Promise<void> {
   // Invalidar cache de Lista Suja (dados foram atualizados)
   const invalidated = await cacheService.invalidateChecker('Slave Labor Registry');
   logger.info({ invalidated }, 'Lista Suja cache invalidated');
+
+  // Update data source freshness
+  await updateDataSourceFreshness('Slave Labor Registry', {
+    totalRecords: newRecords.length,
+    lastUpdateAdded: added.length,
+    lastUpdateRemoved: removed.length
+  });
 
   logger.info({
     added: added.length,

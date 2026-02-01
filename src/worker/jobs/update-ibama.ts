@@ -11,6 +11,7 @@ import { sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
 import { telegram } from '../../services/telegram.js';
 import { cacheService } from '../../services/cache.js';
+import { updateDataSourceFreshness } from '../../utils/data-freshness.js';
 import path from 'path';
 
 const execAsync = promisify(exec);
@@ -69,6 +70,15 @@ export async function updateIbama(): Promise<void> {
   // Invalidar cache de IBAMA (dados foram atualizados)
   const invalidated = await cacheService.invalidateChecker('IBAMA Embargoes');
   logger.info({ invalidated }, 'IBAMA cache invalidated');
+
+  // Update data source freshness
+  await updateDataSourceFreshness('IBAMA Embargoes', {
+    totalRecords: Number(statsAfter.total_documents || 0),
+    totalEmbargoes: Number(statsAfter.total_embargoes || 0),
+    totalAreaHa: Number(statsAfter.total_area_ha || 0),
+    lastUpdateEmbargoes: newEmbargoes,
+    lastUpdateDocuments: newDocuments
+  });
 
   logger.info({
     newEmbargoes,

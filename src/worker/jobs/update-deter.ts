@@ -11,6 +11,7 @@ import { sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
 import { telegram } from '../../services/telegram.js';
 import { cacheService } from '../../services/cache.js';
+import { updateDataSourceFreshness } from '../../utils/data-freshness.js';
 
 const execAsync = promisify(exec);
 
@@ -92,8 +93,16 @@ export async function updateDETER(): Promise<void> {
   const invalidated = await cacheService.invalidateChecker('PRODES Deforestation');
   logger.info({ invalidated }, 'DETER cache invalidated');
 
+  // Update data source freshness
+  const totalNewAlerts = stats.reduce((sum: number, s: any) => sum + Number(s.count), 0);
+  const totalCount = await db.execute(sql`SELECT COUNT(*) as count FROM deter_alerts`);
+  await updateDataSourceFreshness('PRODES Deforestation', {
+    totalRecords: Number(totalCount.rows[0]?.count || 0),
+    lastUpdateAlerts: totalNewAlerts
+  });
+
   logger.info({
-    newAlerts: stats.reduce((sum: number, s: any) => sum + Number(s.count), 0),
+    newAlerts: totalNewAlerts,
     criticalAlerts: criticalAlerts.length
   }, 'DETER update completed');
 }

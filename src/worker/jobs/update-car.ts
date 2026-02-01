@@ -10,6 +10,8 @@ import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
 import { telegram } from '../../services/telegram.js';
+import { cacheService } from '../../services/cache.js';
+import { updateDataSourceFreshness } from '../../utils/data-freshness.js';
 
 const execAsync = promisify(exec);
 
@@ -63,6 +65,17 @@ export async function updateCAR(): Promise<void> {
       );
     }
   }
+
+  // Get total count and update freshness
+  const carCount = await db.execute(sql`SELECT COUNT(*) as count FROM car_registrations`);
+  await updateDataSourceFreshness('CAR Registry', {
+    totalRecords: Number(carCount.rows[0]?.count || 0),
+    criticalStates: criticalChanges.length
+  });
+
+  // Invalidate cache
+  const invalidated = await cacheService.invalidateChecker('CAR Registry');
+  logger.info({ invalidated }, 'CAR cache invalidated');
 
   logger.info({
     criticalStates: criticalChanges.length
