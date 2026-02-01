@@ -58,6 +58,7 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
       SELECT
         document,
         name,
+        type,
         embargo_count,
         total_area_ha
       FROM ibama_embargoes
@@ -71,10 +72,11 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
       count: result.rows.length,
       samples: result.rows.map((r: any) => ({
         document: r.document,
+        type: r.type,
         name: r.name,
         embargoCount: r.embargo_count,
         totalAreaHa: r.total_area_ha,
-        testUrl: `POST /check {"input":{"type":"CNPJ","value":"${r.document}"}}`
+        testUrl: `POST /check {"input":{"type":"${r.type}","value":"${r.document}"}}`
       }))
     };
   });
