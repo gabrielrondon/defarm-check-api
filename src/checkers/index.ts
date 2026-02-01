@@ -4,6 +4,9 @@ import { checkerRegistry } from './registry.js';
 // Social checkers
 import slaveLaborChecker from './social/slave-labor.js';
 
+// Legal checkers
+import cguSanctionsChecker from './legal/cgu-sanctions.js';
+
 // Environmental checkers
 import carChecker from './environmental/car.js';
 import deforestationChecker from './environmental/deforestation.js';
@@ -14,6 +17,7 @@ import { ConservationUnitChecker } from './environmental/conservation-units.js';
 
 // Register all checkers
 checkerRegistry.register(slaveLaborChecker);
+checkerRegistry.register(cguSanctionsChecker);
 checkerRegistry.register(carChecker);
 checkerRegistry.register(deforestationChecker);
 checkerRegistry.register(ibamaEmbargoesChecker);

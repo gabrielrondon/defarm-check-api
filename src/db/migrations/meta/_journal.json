@@ -71,6 +71,13 @@
       "when": 1769692111913,
       "tag": "0009_petite_elektra",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1769954585198,
+      "tag": "0010_flowery_loki",
+      "breakpoints": true
     }
   ]
 }

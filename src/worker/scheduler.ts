@@ -11,6 +11,7 @@ import { createJobExecutor } from './job-executor.js';
 // Import job handlers
 import { updateDETER } from './jobs/update-deter.js';
 import { updateListaSuja } from './jobs/update-lista-suja.js';
+import { updateCguSancoes } from './jobs/update-cgu-sancoes.js';
 import { updateIbama } from './jobs/update-ibama.js';
 import { updateSpatialData } from './jobs/update-spatial-data.js';
 import { updateCAR } from './jobs/update-car.js';
@@ -35,6 +36,12 @@ const JOBS: ScheduledJob[] = [
     name: 'Lista Suja',
     schedule: '0 2 1 * *',  // Mensal (dia 1), 02:00
     handler: updateListaSuja,
+    enabled: true
+  },
+  {
+    name: 'CGU Sanctions',
+    schedule: '0 5 1 * *',  // Mensal (dia 1), 05:00
+    handler: updateCguSancoes,
     enabled: true
   },
   {

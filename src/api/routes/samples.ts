@@ -82,6 +82,46 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   /**
+   * GET /samples/cgu-sancoes
+   * Retorna exemplos de CPF/CNPJ com sanções CGU (CEIS, CNEP, CEAF)
+   */
+  fastify.get('/samples/cgu-sancoes', async (request, reply) => {
+    const result = await db.execute(sql`
+      SELECT
+        document,
+        document_formatted,
+        name,
+        type,
+        sanction_type,
+        category,
+        status,
+        start_date,
+        end_date
+      FROM cgu_sancoes
+      WHERE status = 'ATIVO'
+      ORDER BY RANDOM()
+      LIMIT 10
+    `);
+
+    return {
+      source: 'CGU - Sanções (CEIS, CNEP, CEAF)',
+      count: result.rows.length,
+      samples: result.rows.map((r: any) => ({
+        document: r.document,
+        documentFormatted: r.document_formatted,
+        name: r.name,
+        type: r.type,
+        sanctionType: r.sanction_type,
+        category: r.category,
+        status: r.status,
+        startDate: r.start_date,
+        endDate: r.end_date,
+        testUrl: `POST /check {"input":{"type":"${r.type}","value":"${r.document}"}}`
+      }))
+    };
+  });
+
+  /**
    * GET /samples/terras-indigenas
    * Retorna coordenadas dentro de Terras Indígenas
    */

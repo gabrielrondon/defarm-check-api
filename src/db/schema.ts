@@ -151,6 +151,27 @@ export const ibamaEmbargoes = pgTable('ibama_embargoes', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 });
 
+// Tabela de Sanções da CGU (CEIS, CNEP, CEAF)
+export const cguSancoes = pgTable('cgu_sancoes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  document: varchar('document', { length: 20 }).notNull(), // CPF ou CNPJ sem formatação
+  documentFormatted: varchar('document_formatted', { length: 25 }),
+  type: varchar('type', { length: 10 }).notNull(), // CPF ou CNPJ
+  name: text('name').notNull(),
+  sanctionType: varchar('sanction_type', { length: 10 }).notNull(), // CEIS, CNEP, CEAF
+  category: varchar('category', { length: 100 }), // Categoria da sanção
+  startDate: date('start_date'), // Data de início da sanção
+  endDate: date('end_date'), // Data de fim (se aplicável)
+  description: text('description'), // Descrição da sanção/motivo
+  sanctioningOrgan: varchar('sanctioning_organ', { length: 255 }), // Órgão sancionador
+  processNumber: varchar('process_number', { length: 100 }), // Número do processo
+  status: varchar('status', { length: 50 }), // ATIVO, CANCELADO, EXTINTO, etc
+  federativeUnit: varchar('federative_unit', { length: 2 }), // UF (se aplicável)
+  municipality: varchar('municipality', { length: 255 }), // Município (se aplicável)
+  source: varchar('source', { length: 50 }).default('CGU'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
 // Índices para performance
 export const checkRequestsIdx = {
   inputTypeIdx: 'idx_check_requests_input_type',
@@ -166,6 +187,13 @@ export const listaSujaIdx = {
 export const ibamaEmbargoesIdx = {
   documentIdx: 'idx_ibama_embargoes_document',
   typeIdx: 'idx_ibama_embargoes_type'
+};
+
+export const cguSancoesIdx = {
+  documentIdx: 'idx_cgu_sancoes_document',
+  typeIdx: 'idx_cgu_sancoes_type',
+  sanctionTypeIdx: 'idx_cgu_sancoes_sanction_type',
+  statusIdx: 'idx_cgu_sancoes_status'
 };
 
 export const deterAlertsIdx = {
