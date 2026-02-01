@@ -34,6 +34,8 @@
     "seed:cgu-sancoes": "tsx scripts/seed-cgu-sancoes.ts",
     "data:queimadas": "tsx scripts/download-queimadas.ts",
     "seed:queimadas": "tsx scripts/seed-queimadas.ts",
+    "data:mapa-organicos": "tsx scripts/download-mapa-organicos.ts",
+    "seed:mapa-organicos": "tsx scripts/seed-mapa-organicos.ts",
     "cron:setup": "bash scripts/cron/setup-cron.sh",
     "cron:test-deter": "tsx scripts/cron/update-deter.ts",
     "cron:test-lista-suja": "tsx scripts/cron/update-lista-suja.ts",

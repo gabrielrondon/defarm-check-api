@@ -36,15 +36,18 @@ export class QueimadasChecker extends BaseChecker {
     if (!input.coordinates) {
       return {
         status: CheckStatus.ERROR,
-        message: 'Coordenadas não fornecidas para verificação de queimadas'
+        message: 'Coordenadas não fornecidas para verificação de queimadas',
+        executionTimeMs: 0,
+        cached: false
       };
     }
 
-    const { latitude, longitude, buffer = 1000 } = input.coordinates;
+    const { lat: latitude, lon: longitude } = input.coordinates;
+    const buffer = 1000; // Default 1km buffer
 
     // Query fire hotspots within buffer distance (default 1km)
     // Use ST_DWithin for efficient spatial search with distance in meters
-    const hotspots: any[] = await db.execute(sql`
+    const result = await db.execute(sql`
       SELECT
         id,
         latitude,
@@ -70,20 +73,24 @@ export class QueimadasChecker extends BaseChecker {
       LIMIT 100
     `);
 
-    if (!hotspots.rows || hotspots.rows.length === 0) {
+    const hotspots = result.rows || [];
+
+    if (hotspots.length === 0) {
       return {
         status: CheckStatus.PASS,
         message: `Nenhum foco de queimada detectado nos últimos 90 dias (raio de ${buffer}m)`,
         details: {
           checked_area_meters: buffer,
           total_hotspots: 0
-        }
+        },
+        executionTimeMs: 0,
+        cached: false
       };
     }
 
-    const totalHotspots = hotspots.rows.length;
-    const mostRecentHotspot = hotspots.rows[0];
-    const last7Days = hotspots.rows.filter((h: any) => {
+    const totalHotspots = hotspots.length;
+    const mostRecentHotspot = hotspots[0];
+    const last7Days = hotspots.filter((h: any) => {
       const daysAgo = (Date.now() - new Date(h.date_time).getTime()) / (1000 * 60 * 60 * 24);
       return daysAgo <= 7;
     });
@@ -101,7 +108,7 @@ export class QueimadasChecker extends BaseChecker {
     }
 
     // Calculate average FRP (Fire Radiative Power) if available
-    const validFRP = hotspots.rows.filter((h: any) => h.frp !== null);
+    const validFRP = hotspots.filter((h: any) => h.frp !== null);
     const avgFRP = validFRP.length > 0
       ? Math.round(validFRP.reduce((sum: number, h: any) => sum + h.frp, 0) / validFRP.length)
       : null;
@@ -116,7 +123,7 @@ export class QueimadasChecker extends BaseChecker {
         checked_area_meters: buffer,
         most_recent: {
           date: mostRecentHotspot.date_time,
-          distance_meters: Math.round(mostRecentHotspot.distance_meters),
+          distance_meters: Math.round(Number(mostRecentHotspot.distance_meters)),
           satellite: mostRecentHotspot.satellite,
           municipality: mostRecentHotspot.municipality,
           state: mostRecentHotspot.state,
@@ -124,13 +131,15 @@ export class QueimadasChecker extends BaseChecker {
           frp: mostRecentHotspot.frp
         },
         avg_frp: avgFRP,
-        hotspots: hotspots.rows.slice(0, 10).map((h: any) => ({
+        hotspots: hotspots.slice(0, 10).map((h: any) => ({
           date: h.date_time,
-          distance_meters: Math.round(h.distance_meters),
+          distance_meters: Math.round(Number(h.distance_meters)),
           satellite: h.satellite,
           frp: h.frp
         }))
-      }
+      },
+      executionTimeMs: 0,
+      cached: false
     };
   }
 }

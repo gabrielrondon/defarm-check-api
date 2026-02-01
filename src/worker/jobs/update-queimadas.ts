@@ -34,18 +34,18 @@ export async function updateQueimadas() {
     const seedResult = await execAsync('npm run seed:queimadas');
     logger.info({ stdout: seedResult.stdout }, 'Seed completed');
 
-    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    const duration = Number(((Date.now() - startTime) / 1000).toFixed(1));
 
     await sendTelegramNotification(
       '✅',
       jobName,
-      'completed',
-      `Duration: ${duration}s`
+      'success',
+      { duration }
     );
 
     logger.info({ duration }, 'INPE Queimadas update completed successfully');
   } catch (error: any) {
-    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    const duration = Number(((Date.now() - startTime) / 1000).toFixed(1));
 
     logger.error({ error, duration }, 'INPE Queimadas update failed');
 
@@ -53,7 +53,7 @@ export async function updateQueimadas() {
       '❌',
       jobName,
       'failed',
-      `Error: ${error.message}\nDuration: ${duration}s`
+      { error: error.message }
     );
 
     throw error;
