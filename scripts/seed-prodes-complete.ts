@@ -203,18 +203,34 @@ async function seedFile(filepath: string, batchSize: number = 50): Promise<numbe
         }
 
         // Execute single bulk INSERT for entire batch
+        console.log(`Executing INSERT for ${batchData.length} records...`);
         await db.execute(sql`
           INSERT INTO prodes_deforestation (
             year, area_km2, state, municipality, class_name, path_row, image_date, source, geom
           ) VALUES ${sql.join(valuesClauses, sql`, `)}
         `);
+        console.log(`✅ INSERT successful for ${batchData.length} records`);
 
         inserted += batchData.length;
 
       } catch (error) {
         failed += batchData.length;
         const errorMsg = error instanceof Error ? error.message : String(error);
-        logger.error('Batch insert failed', { error: errorMsg, batchSize: batchData.length });
+        const errorStack = error instanceof Error ? error.stack : undefined;
+
+        console.error('\n❌ BATCH INSERT FAILED:');
+        console.error('Error message:', errorMsg);
+        console.error('Error stack:', errorStack);
+        console.error('Batch size:', batchData.length);
+        console.error('Error object:', error);
+
+        logger.error('Batch insert failed', {
+          error: errorMsg,
+          stack: errorStack,
+          batchSize: batchData.length,
+          fullError: error
+        });
+
         if (errors.length < 10) {
           errors.push(errorMsg);
         }
