@@ -15,6 +15,7 @@ import { updateIbama } from './jobs/update-ibama.js';
 import { updateSpatialData } from './jobs/update-spatial-data.js';
 import { updateCAR } from './jobs/update-car.js';
 import { checkDataFreshness } from './jobs/check-data-freshness.js';
+import { backupDatabase } from './jobs/backup-database.js';
 
 interface ScheduledJob {
   name: string;
@@ -58,6 +59,12 @@ const JOBS: ScheduledJob[] = [
     name: 'Data Freshness Check',
     schedule: '0 8 * * *',  // Diária, 08:00
     handler: checkDataFreshness,
+    enabled: true
+  },
+  {
+    name: 'Database Backup',
+    schedule: '0 1 * * 0',  // Semanal (domingo), 01:00
+    handler: backupDatabase,
     enabled: true
   }
 ];
