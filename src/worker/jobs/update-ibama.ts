@@ -13,6 +13,8 @@ import { telegram } from '../../services/telegram.js';
 import { cacheService } from '../../services/cache.js';
 import { updateDataSourceFreshness } from '../../utils/data-freshness.js';
 import path from 'path';
+import axios from 'axios';
+import fs from 'fs/promises';
 
 const execAsync = promisify(exec);
 
@@ -33,9 +35,13 @@ export async function updateIbama(): Promise<void> {
 
   const dataDir = path.join(process.cwd(), 'data');
 
-  // Download
-  const downloadCmd = `curl -L 'https://dadosabertos.ibama.gov.br/dados/SIFISC/termo_embargo/termo_embargo/termo_embargo_csv.zip' -o ${dataDir}/ibama_embargos.zip`;
-  await execAsync(downloadCmd);
+  // Ensure data directory exists
+  await fs.mkdir(dataDir, { recursive: true });
+
+  // Download using axios (Railway doesn't have curl)
+  const url = 'https://dadosabertos.ibama.gov.br/dados/SIFISC/termo_embargo/termo_embargo/termo_embargo_csv.zip';
+  const response = await axios.get(url, { responseType: 'arraybuffer', maxRedirects: 5 });
+  await fs.writeFile(path.join(dataDir, 'ibama_embargos.zip'), Buffer.from(response.data));
 
   // Unzip
   await execAsync(`cd ${dataDir} && unzip -o ibama_embargos.zip`);

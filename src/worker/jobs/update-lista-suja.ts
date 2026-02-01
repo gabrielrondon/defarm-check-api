@@ -14,6 +14,7 @@ import { cacheService } from '../../services/cache.js';
 import { updateDataSourceFreshness } from '../../utils/data-freshness.js';
 import fs from 'fs/promises';
 import path from 'path';
+import axios from 'axios';
 
 const execAsync = promisify(exec);
 
@@ -36,9 +37,13 @@ export async function updateListaSuja(): Promise<void> {
 
   const dataDir = path.join(process.cwd(), 'data');
 
-  // Download
-  const downloadCmd = `curl -L 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/cadastro_de_empregadores.xlsx' -o ${dataDir}/lista_suja.xlsx`;
-  await execAsync(downloadCmd);
+  // Ensure data directory exists
+  await fs.mkdir(dataDir, { recursive: true });
+
+  // Download using axios (Railway doesn't have curl)
+  const url = 'https://www.gov.br/trabalho-e-emprego/pt-br/assuntos/inspecao-do-trabalho/areas-de-atuacao/cadastro_de_empregadores.xlsx';
+  const response = await axios.get(url, { responseType: 'arraybuffer', maxRedirects: 5 });
+  await fs.writeFile(path.join(dataDir, 'lista_suja.xlsx'), Buffer.from(response.data));
 
   // Convert
   await execAsync('tsx scripts/convert-lista-suja.ts');
