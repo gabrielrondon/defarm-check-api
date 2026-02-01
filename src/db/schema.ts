@@ -89,6 +89,24 @@ export const terrasIndigenas = pgTable('terras_indigenas', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 });
 
+// Tabela de Queimadas/Focos de Calor (INPE)
+// Nota: geometria será gerenciada via SQL direto (PostGIS)
+export const queimadasFocos = pgTable('queimadas_focos', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  latitude: varchar('latitude', { length: 20 }).notNull(),
+  longitude: varchar('longitude', { length: 20 }).notNull(),
+  dateTime: timestamp('date_time', { withTimezone: true }).notNull(), // Data/hora do foco
+  satellite: varchar('satellite', { length: 50 }), // Satélite que detectou (AQUA, TERRA, NPP, etc)
+  municipality: varchar('municipality', { length: 255 }),
+  state: varchar('state', { length: 50 }), // Estado por extenso (ex: PARÁ, PIAUÍ, MARANHÃO)
+  biome: varchar('biome', { length: 50 }), // Amazônia, Cerrado, Mata Atlântica, etc
+  frp: integer('frp'), // Fire Radiative Power (potência radiativa do fogo)
+  riskLevel: varchar('risk_level', { length: 20 }), // Baixo, Médio, Alto, Crítico
+  source: varchar('source', { length: 50 }).default('INPE'),
+  // geometria será adicionada via SQL: geometry(POINT, 4326)
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
 // Tabela de Unidades de Conservação (ICMBio)
 // Nota: geometria será gerenciada via SQL direto (PostGIS)
 export const unidadesConservacao = pgTable('unidades_conservacao', {
@@ -200,6 +218,13 @@ export const deterAlertsIdx = {
   alertDateIdx: 'idx_deter_alerts_alert_date',
   stateIdx: 'idx_deter_alerts_state',
   classnameIdx: 'idx_deter_alerts_classname'
+};
+
+export const queimadasFocosIdx = {
+  dateTimeIdx: 'idx_queimadas_focos_date_time',
+  stateIdx: 'idx_queimadas_focos_state',
+  biomeIdx: 'idx_queimadas_focos_biome',
+  satelliteIdx: 'idx_queimadas_focos_satellite'
 };
 
 export const terrasIndigenasIdx = {

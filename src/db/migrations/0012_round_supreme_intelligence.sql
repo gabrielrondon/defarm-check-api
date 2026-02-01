@@ -1,0 +1,1 @@
+ALTER TABLE "queimadas_focos" ALTER COLUMN "state" SET DATA TYPE varchar(50);

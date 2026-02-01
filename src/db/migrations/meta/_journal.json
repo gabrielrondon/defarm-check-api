@@ -78,6 +78,20 @@
       "when": 1769954585198,
       "tag": "0010_flowery_loki",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1769955851196,
+      "tag": "0011_empty_blue_blade",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1769957282181,
+      "tag": "0012_round_supreme_intelligence",
+      "breakpoints": true
     }
   ]
 }

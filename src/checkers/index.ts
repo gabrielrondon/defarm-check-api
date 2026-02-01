@@ -14,6 +14,7 @@ import ibamaEmbargoesChecker from './environmental/ibama-embargoes.js';
 import { DeterAlertChecker } from './environmental/deter-alerts.js';
 import { IndigenousLandChecker } from './environmental/indigenous-lands.js';
 import { ConservationUnitChecker } from './environmental/conservation-units.js';
+import { QueimadasChecker } from './environmental/queimadas.js';
 
 // Register all checkers
 checkerRegistry.register(slaveLaborChecker);
@@ -24,6 +25,7 @@ checkerRegistry.register(ibamaEmbargoesChecker);
 checkerRegistry.register(new DeterAlertChecker());
 checkerRegistry.register(new IndigenousLandChecker());
 checkerRegistry.register(new ConservationUnitChecker());
+checkerRegistry.register(new QueimadasChecker());
 
 export { checkerRegistry };
 export * from './base.js';

@@ -15,6 +15,7 @@ import { updateCguSancoes } from './jobs/update-cgu-sancoes.js';
 import { updateIbama } from './jobs/update-ibama.js';
 import { updateSpatialData } from './jobs/update-spatial-data.js';
 import { updateCAR } from './jobs/update-car.js';
+import { updateQueimadas } from './jobs/update-queimadas.js';
 import { checkDataFreshness } from './jobs/check-data-freshness.js';
 import { backupDatabase } from './jobs/backup-database.js';
 
@@ -60,6 +61,12 @@ const JOBS: ScheduledJob[] = [
     name: 'CAR (Priority States)',
     schedule: '0 3 15 * *',  // Mensal (dia 15), 03:00
     handler: updateCAR,
+    enabled: true
+  },
+  {
+    name: 'INPE Queimadas',
+    schedule: '0 4 * * *',  // Diária, 04:00
+    handler: updateQueimadas,
     enabled: true
   },
   {
