@@ -33,6 +33,7 @@
     "seed:car": "tsx scripts/seed-car.ts",
     "seed:car-all": "tsx scripts/seed-car-all.ts",
     "seed:car-optimized": "tsx scripts/seed-car-optimized.ts",
+    "process:car": "tsx scripts/process-car-shapefiles.ts",
     "data:cgu-sancoes": "tsx scripts/download-cgu-sancoes.ts",
     "seed:cgu-sancoes": "tsx scripts/seed-cgu-sancoes.ts",
     "data:queimadas": "tsx scripts/download-queimadas.ts",

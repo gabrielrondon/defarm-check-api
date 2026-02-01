@@ -53,3 +53,10 @@ data/*.json
 data/*.geojson
 data/*.shp
 data/*.dbf
+
+# CAR shapefiles and downloads (too large for git)
+car/
+car/*.zip
+car/*.shp
+car/*.dbf
+car/*.json
