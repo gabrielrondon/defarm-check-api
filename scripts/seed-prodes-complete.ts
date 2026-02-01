@@ -202,14 +202,14 @@ async function seedFile(filepath: string, batchSize: number = 50): Promise<numbe
 
         for (const item of batchData) {
           const { normalized, geomJson } = item;
+          // Convert km² to hectares (1 km² = 100 ha)
+          const areaHa = Math.round(normalized.areaKm2 * 100);
           valuesClauses.push(sql`(
             ${normalized.year},
-            ${normalized.areaKm2},
+            ${areaHa},
             ${normalized.state},
             ${normalized.municipality},
-            ${normalized.className},
             ${normalized.pathRow},
-            ${normalized.imageDate},
             ${normalized.source},
             ST_SetSRID(ST_GeomFromGeoJSON(${geomJson}), 4326)
           )`);
@@ -219,7 +219,7 @@ async function seedFile(filepath: string, batchSize: number = 50): Promise<numbe
         console.log(`Executing INSERT for ${batchData.length} records...`);
         await db.execute(sql`
           INSERT INTO prodes_deforestation (
-            year, area_km2, state, municipality, class_name, path_row, image_date, source, geom
+            year, area_ha, state, municipality, path_row, source, geometry
           ) VALUES ${sql.join(valuesClauses, sql`, `)}
         `);
         console.log(`✅ INSERT successful for ${batchData.length} records`);
