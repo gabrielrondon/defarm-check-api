@@ -97,6 +97,52 @@ class CacheService {
     }
   }
 
+  // Invalidate ALL cache for a specific checker (quando dados são atualizados)
+  async invalidateChecker(checkerName: string): Promise<number> {
+    if (!this.connected) {
+      return 0;
+    }
+
+    try {
+      const pattern = `cache:check:*:*:${checkerName}`;
+      const keys = await this.client.keys(pattern);
+
+      if (keys.length > 0) {
+        await this.client.del(...keys);
+        logger.info({ checker: checkerName, count: keys.length }, 'Checker cache invalidated');
+        return keys.length;
+      }
+
+      return 0;
+    } catch (err) {
+      logger.warn({ err, checker: checkerName }, 'Checker cache invalidate error');
+      return 0;
+    }
+  }
+
+  // Invalidate ALL cache (nuclear option - use com cuidado!)
+  async invalidateAll(): Promise<number> {
+    if (!this.connected) {
+      return 0;
+    }
+
+    try {
+      const pattern = `cache:check:*`;
+      const keys = await this.client.keys(pattern);
+
+      if (keys.length > 0) {
+        await this.client.del(...keys);
+        logger.warn({ count: keys.length }, 'ALL cache invalidated');
+        return keys.length;
+      }
+
+      return 0;
+    } catch (err) {
+      logger.error({ err }, 'Cache invalidateAll error');
+      return 0;
+    }
+  }
+
   // Health check
   async isHealthy(): Promise<boolean> {
     try {

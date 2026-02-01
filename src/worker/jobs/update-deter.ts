@@ -10,6 +10,7 @@ import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
 import { telegram } from '../../services/telegram.js';
+import { cacheService } from '../../services/cache.js';
 
 const execAsync = promisify(exec);
 
@@ -86,6 +87,10 @@ export async function updateDETER(): Promise<void> {
       alert.total_area_ha
     );
   }
+
+  // Invalidar cache de DETER (dados foram atualizados)
+  const invalidated = await cacheService.invalidateChecker('PRODES Deforestation');
+  logger.info({ invalidated }, 'DETER cache invalidated');
 
   logger.info({
     newAlerts: stats.reduce((sum: number, s: any) => sum + Number(s.count), 0),

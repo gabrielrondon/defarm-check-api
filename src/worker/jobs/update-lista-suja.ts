@@ -10,6 +10,7 @@ import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
 import { telegram } from '../../services/telegram.js';
+import { cacheService } from '../../services/cache.js';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -73,6 +74,10 @@ export async function updateListaSuja(): Promise<void> {
       exampleNames
     );
   }
+
+  // Invalidar cache de Lista Suja (dados foram atualizados)
+  const invalidated = await cacheService.invalidateChecker('Slave Labor Registry');
+  logger.info({ invalidated }, 'Lista Suja cache invalidated');
 
   logger.info({
     added: added.length,

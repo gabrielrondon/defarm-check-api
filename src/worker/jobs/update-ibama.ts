@@ -5,10 +5,12 @@
  */
 
 import { exec } from 'child_process';
-import { promisify } from 'util';
+import { promisify} from 'util';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
+import { telegram } from '../../services/telegram.js';
+import { cacheService } from '../../services/cache.js';
 import path from 'path';
 
 const execAsync = promisify(exec);
@@ -43,8 +45,34 @@ export async function updateIbama(): Promise<void> {
   // Seed
   await execAsync('tsx scripts/seed-ibama-simple.ts');
 
-  // Stats
-  const stats = await getStats();
+  // Stats before update
+  const statsBefore = await getStats();
 
-  logger.info({ stats }, 'IBAMA update completed');
+  // Stats after update
+  const statsAfter = await getStats();
+
+  const newEmbargoes = Number(statsAfter.total_embargoes || 0) - Number(statsBefore.total_embargoes || 0);
+  const newDocuments = Number(statsAfter.total_documents || 0) - Number(statsBefore.total_documents || 0);
+
+  // Notificar se mudanças significativas (> 100 novos embargos ou > 50 documentos)
+  if (newEmbargoes > 100 || newDocuments > 50) {
+    await telegram.sendMessage({
+      text: `📋 <b>IBAMA - Atualização Significativa</b>\n\n` +
+        `🔴 Novos embargos: ${newEmbargoes}\n` +
+        `📄 Novos documentos: ${newDocuments}\n` +
+        `📊 Total embargos: ${statsAfter.total_embargoes}\n` +
+        `📐 Área embargada: ${Number(statsAfter.total_area_ha || 0).toLocaleString('pt-BR')} ha\n\n` +
+        `⚠️ <b>Aumento significativo detectado!</b>`
+    });
+  }
+
+  // Invalidar cache de IBAMA (dados foram atualizados)
+  const invalidated = await cacheService.invalidateChecker('IBAMA Embargoes');
+  logger.info({ invalidated }, 'IBAMA cache invalidated');
+
+  logger.info({
+    newEmbargoes,
+    newDocuments,
+    totalEmbargoes: statsAfter.total_embargoes
+  }, 'IBAMA update completed');
 }
