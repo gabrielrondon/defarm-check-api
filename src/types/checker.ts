@@ -2,7 +2,8 @@
 export enum CheckerCategory {
   ENVIRONMENTAL = 'environmental',
   SOCIAL = 'social',
-  LEGAL = 'legal'
+  LEGAL = 'legal',
+  POSITIVE = 'positive' // Certificações e indicadores positivos
 }
 
 // Status do resultado

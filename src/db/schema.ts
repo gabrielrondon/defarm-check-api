@@ -107,6 +107,27 @@ export const queimadasFocos = pgTable('queimadas_focos', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 });
 
+// Tabela de Produtores Orgânicos (MAPA/CNPO)
+export const mapaOrganicos = pgTable('mapa_organicos', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  document: varchar('document', { length: 20 }).notNull(), // CPF/CNPJ normalizado
+  documentFormatted: varchar('document_formatted', { length: 25 }), // Formato original
+  type: varchar('type', { length: 10 }).notNull(), // CPF ou CNPJ
+  producerName: text('producer_name').notNull(), // Nome do produtor
+  entityType: varchar('entity_type', { length: 50 }), // CERTIFICADORA, OPAC, OCS
+  entityName: text('entity_name'), // Nome da entidade certificadora
+  country: varchar('country', { length: 100 }), // País
+  state: varchar('state', { length: 50 }), // Estado
+  city: varchar('city', { length: 255 }), // Município
+  status: varchar('status', { length: 20 }).notNull(), // ATIVO ou INATIVO
+  scope: text('scope'), // Escopo de atuação (produção primária, processamento, etc)
+  activities: text('activities'), // Produtos/atividades (pode ser muito longo)
+  contact: varchar('contact', { length: 255 }), // Email de contato
+  source: varchar('source', { length: 50 }).default('MAPA/CNPO'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+});
+
 // Tabela de Unidades de Conservação (ICMBio)
 // Nota: geometria será gerenciada via SQL direto (PostGIS)
 export const unidadesConservacao = pgTable('unidades_conservacao', {

@@ -16,6 +16,9 @@ import { IndigenousLandChecker } from './environmental/indigenous-lands.js';
 import { ConservationUnitChecker } from './environmental/conservation-units.js';
 import { QueimadasChecker } from './environmental/queimadas.js';
 
+// Positive checkers (certifications, compliance indicators)
+import { MapaOrganicosChecker } from './positive/mapa-organicos.js';
+
 // Register all checkers
 checkerRegistry.register(slaveLaborChecker);
 checkerRegistry.register(cguSanctionsChecker);
@@ -26,6 +29,7 @@ checkerRegistry.register(new DeterAlertChecker());
 checkerRegistry.register(new IndigenousLandChecker());
 checkerRegistry.register(new ConservationUnitChecker());
 checkerRegistry.register(new QueimadasChecker());
+checkerRegistry.register(new MapaOrganicosChecker());
 
 export { checkerRegistry };
 export * from './base.js';

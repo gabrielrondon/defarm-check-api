@@ -281,3 +281,25 @@ class TelegramService {
 
 // Singleton
 export const telegram = new TelegramService();
+
+/**
+ * Helper function for worker jobs - Sends job status notifications
+ * @param emoji - Emoji to display (🔥, 📋, ⚠️, etc)
+ * @param jobName - Name of the job
+ * @param status - 'started', 'success', or 'failed'
+ * @param details - Optional additional details (duration, error message, stats)
+ */
+export async function sendTelegramNotification(
+  emoji: string,
+  jobName: string,
+  status: 'started' | 'success' | 'failed',
+  details?: { duration?: number; error?: string; stats?: any }
+): Promise<void> {
+  if (status === 'started') {
+    await telegram.notifyJobStart(jobName);
+  } else if (status === 'success') {
+    await telegram.notifyJobSuccess(jobName, details?.duration || 0, details?.stats);
+  } else if (status === 'failed') {
+    await telegram.notifyJobFailure(jobName, details?.error || 'Unknown error');
+  }
+}

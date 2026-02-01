@@ -7,7 +7,8 @@ export enum InputType {
   CAR = 'CAR',
   IE = 'IE', // Inscrição Estadual
   COORDINATES = 'COORDINATES',
-  ADDRESS = 'ADDRESS'
+  ADDRESS = 'ADDRESS',
+  NAME = 'NAME' // Nome do produtor/empresa
 }
 
 // Schema Zod para validação
