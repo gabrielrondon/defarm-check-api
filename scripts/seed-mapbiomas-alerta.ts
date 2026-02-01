@@ -65,22 +65,30 @@ function mapAlert(alert: any): any {
     }
   }
 
+  // Handle string fields from API (crossed fields are comma-separated strings)
+  const state = alert.crossedStates ? alert.crossedStates.split(',')[0].trim() : null;
+  const municipality = alert.crossedCities ? alert.crossedCities.split(',')[0].trim() : null;
+  const biome = alert.crossedBiomes ? alert.crossedBiomes.split(',')[0].trim() : null;
+
+  const hasIndigenousLand = alert.crossedIndigenousLands && alert.crossedIndigenousLands.length > 0;
+  const hasConservationUnit = alert.crossedConservationUnits && alert.crossedConservationUnits.length > 0;
+
   return {
     alertCode: String(alert.alertCode).trim(),
     areaHa: Math.round(Number(alert.areaHa) || 0),
     detectedAt: alert.detectedAt,
     publishedAt: alert.publishedAt,
-    state: alert.state || null,
-    municipality: alert.city || null,
-    biome: alert.biome || null,
+    state: state ? state.substring(0, 2) : null, // Get UF code (first 2 chars)
+    municipality: municipality ? municipality.substring(0, 255) : null,
+    biome: biome ? biome.substring(0, 50) : null,
     deforestationClass: deforestationClass.substring(0, 100) || null,
     deforestationSpeed: alert.deforestationSpeed || null,
     source: source.substring(0, 50),
     statusName: alert.statusName || 'published',
-    indigenousLand: Boolean(alert.crossedIndigenousLand),
-    conservationUnit: Boolean(alert.crossedConservationUnit),
-    embargoedArea: Boolean(alert.isInEmbargoedArea),
-    authorizedArea: Boolean(alert.isInAuthorizedArea),
+    indigenousLand: hasIndigenousLand,
+    conservationUnit: hasConservationUnit,
+    embargoedArea: false, // Will need to check CAR intersection manually
+    authorizedArea: false, // Will need to check CAR intersection manually
     carCodes: carCodes.length > 0 ? carCodes : null,
     carIntersectionCount: carCodes.length,
     sourceData: 'MapBiomas Alerta',

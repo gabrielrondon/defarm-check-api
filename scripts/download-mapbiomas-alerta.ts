@@ -18,6 +18,7 @@
  *   npm run data:mapbiomas-alerta
  */
 
+import 'dotenv/config';
 import fs from 'fs/promises';
 import path from 'path';
 import axios from 'axios';
@@ -57,7 +58,9 @@ async function authenticate(email: string, password: string): Promise<string> {
 
   const mutation = `
     mutation SignIn($email: String!, $password: String!) {
-      signIn(email: $email, password: $password)
+      signIn(email: $email, password: $password) {
+        token
+      }
     }
   `;
 
@@ -71,7 +74,7 @@ async function authenticate(email: string, password: string): Promise<string> {
       throw new Error(`Authentication failed: ${JSON.stringify(response.data.errors)}`);
     }
 
-    const token = response.data.data.signIn;
+    const token = response.data.data.signIn.token;
     logger.info('✅ Authentication successful');
     return token;
   } catch (error: any) {
@@ -86,7 +89,7 @@ async function authenticate(email: string, password: string): Promise<string> {
 async function fetchAlerts(token: string, config: MapBiomasConfig): Promise<any[]> {
   logger.info('Fetching alerts from MapBiomas Alerta API...');
 
-  // Query para buscar alertas com filtros
+  // Query simplificada com apenas campos escalares básicos
   const query = `
     query GetAlerts(
       $startDate: BaseDate!
@@ -103,7 +106,7 @@ async function fetchAlerts(token: string, config: MapBiomasConfig): Promise<any[
         statusName: "published"
         page: $page
         limit: $limit
-        sortField: PUBLISHED_AT
+        sortField: DETECTED_AT
         sortDirection: DESC
       ) {
         collection {
@@ -111,19 +114,17 @@ async function fetchAlerts(token: string, config: MapBiomasConfig): Promise<any[
           areaHa
           detectedAt
           publishedAt
-          state
-          city
-          biome
           deforestationClasses
           deforestationSpeed
           sources
           statusName
           geometryWkt
-          crossedIndigenousLand
-          crossedConservationUnit
-          isInEmbargoedArea
-          isInAuthorizedArea
           ruralPropertiesCodes
+          crossedStates
+          crossedCities
+          crossedBiomes
+          crossedIndigenousLands
+          crossedConservationUnits
         }
         metadata {
           currentPage
