@@ -276,6 +276,251 @@ The API includes `/samples/*` endpoints for testing with real data:
 
 Use these for end-to-end testing without knowing actual documents.
 
+## Data Sources: Implementation Guide & Learnings
+
+This section documents detailed learnings from implementing each data source, including challenges faced and solutions discovered.
+
+### PRODES (Deforestation Monitoring - INPE/TerraBrasilis)
+
+**Status:** ✅ Complete - 216,242 records (all 6 biomes)
+
+**Data Source:** https://terrabrasilis.dpi.inpe.br/geoserver/ows
+
+**Implementation Files:**
+- `scripts/download-prodes-complete.ts` - WFS download from TerraBrasilis
+- `scripts/seed-prodes-complete.ts` - Optimized batch INSERT seeding
+- `src/worker/jobs/update-prodes.ts` - Monthly cron job (1st day, 05:00)
+
+**Workflow:**
+```bash
+# 1. Download all 6 biomes (2 minutes, 901 MB total)
+npm run data:prodes-complete
+
+# 2. Seed into PostgreSQL (1 minute, 216K records)
+npm run seed:prodes-complete -- --clean
+```
+
+**Biomes Covered:**
+- Amazônia Legal: 50,000 records (208 MB)
+- Cerrado: 36,050 records (214 MB)
+- Caatinga: 50,000 records (143 MB)
+- Mata Atlântica: 50,000 records (167 MB)
+- Pampa: 24,865 records (136 MB)
+- Pantanal: 5,327 records (33 MB)
+
+**Challenges & Solutions:**
+
+1. **Schema Mismatch (Critical)**
+   - **Problem:** Script tried to insert `area_km2`, but DB schema has `area_ha`
+   - **Error:** `column "area_km2" of relation "prodes_deforestation" does not exist`
+   - **Solution:**
+     - Changed column name from `area_km2` → `area_ha`
+     - Added conversion: `areaHa = Math.round(areaKm2 * 100)` (1 km² = 100 ha)
+     - Changed geometry column from `geom` → `geometry` (actual PostGIS column name)
+     - Removed `class_name` and `image_date` (not in current schema)
+
+2. **SQL Query Truncation**
+   - **Problem:** Batch size 500 created 20-50 MB SQL queries that got truncated
+   - **Error:** Query showed `ST_SetSRID(ST_GeomFromGeoJSON($2565), 432` (cut off mid-SRID)
+   - **Solution:** Reduced batch size from 500 → 50 features per INSERT
+
+3. **Bulk INSERT Optimization**
+   - **Initial approach:** Individual INSERT + UPDATE per record (too slow)
+   - **Failed attempt:** Raw SQL string concatenation (SQL injection risk, truncation)
+   - **Final solution:** Drizzle `sql.join()` with parameterized batch INSERT
+   ```typescript
+   const valuesClauses = batchData.map(item => sql`(
+     ${item.year},
+     ${item.areaHa},
+     ...
+     ST_SetSRID(ST_GeomFromGeoJSON(${geomJson}), 4326)
+   )`);
+
+   await db.execute(sql`
+     INSERT INTO prodes_deforestation (...)
+     VALUES ${sql.join(valuesClauses, sql`, `)}
+   `);
+   ```
+
+**Database Schema:**
+```sql
+CREATE TABLE prodes_deforestation (
+  id UUID PRIMARY KEY,
+  year INTEGER NOT NULL,
+  area_ha INTEGER NOT NULL,  -- Area in hectares (NOT km²)
+  state VARCHAR(2),
+  municipality VARCHAR(255),
+  path_row VARCHAR(10),
+  source VARCHAR(50) DEFAULT 'PRODES',
+  geometry geometry(MULTIPOLYGON, 4326),  -- PostGIS column
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Performance:**
+- Download: 2 minutes for 230K features
+- Seed: 58 seconds for 216K records (batch size 50)
+- Monthly update: Downloads last 3 years of Amazônia only
+
+---
+
+### CAR (Cadastro Ambiental Rural - SICAR)
+
+**Status:** 🔄 In Progress - 3.5M records (20/27 states), 7 large states remaining
+
+**Data Source:** https://consultapublica.car.gov.br/publico/estados/downloads
+
+**Implementation Files:**
+- `scripts/process-car-shapefiles.ts` - Extract ZIPs, convert SHP → GeoJSON
+- `scripts/seed-car-optimized-v2.ts` - Batch INSERT with PostGIS
+- `scripts/split-large-car-files.ts` - Split files > 512 MB to avoid V8 limits
+
+**Workflow:**
+```bash
+# 1. Manual download (CAPTCHA-protected portal)
+# Download all 27 states from portal to car/ directory
+
+# 2. Convert shapefiles to GeoJSON (12 minutes)
+npm run process:car
+
+# 3a. Seed small/medium states (works fine)
+npm run seed:car-v2 -- --clean
+
+# 3b. For large states (BA, MG, SP, RS, GO, SC, PR):
+npm run split:car -- BA MG SP RS GO SC PR  # Split into chunks
+npm run seed:car-v2  # Seed all (including chunks)
+```
+
+**Current Status:**
+- ✅ Small/medium states: 3,544,068 records (20 states)
+- 🔄 Large states: 7 pending (estimated 2-3M more records)
+- 📊 Total expected: ~5.5-6M CAR registrations
+
+**Challenges & Solutions:**
+
+1. **CAPTCHA-Protected Downloads**
+   - **Problem:** Official portal requires CAPTCHA per state
+   - **Failed approach:** WFS API timeouts (5-23 minutes, then fails)
+   - **Solution:** Manual download of ZIP files from portal
+   - **Tools tried:** GeoServer Layer Preview (also has issues), GitHub SICAR tool
+
+2. **Invalid String Length (V8 Limitation)**
+   - **Problem:** Files > 512 MB cannot be loaded as strings in JavaScript
+   - **Error:** `"Invalid string length"` when reading large JSON files
+   - **Affected states:** BA (1.2 GB), MG (1.2 GB), SP (928 MB), RS (929 MB), GO (610 MB), SC (560 MB), PR (~600 MB)
+   - **Solution:** Created `split-large-car-files.ts` to:
+     - Read files incrementally using readline
+     - Split into chunks of 50K features each
+     - Avoids loading entire file into memory
+
+3. **Memory Management**
+   - **Problem:** Even with `--max-old-space-size=8192`, 1+ GB files fail
+   - **Solution:**
+     - Split files before seeding (see above)
+     - Use batch INSERT (50 records per batch)
+     - Process chunks sequentially
+
+4. **GeoJSON Structure Differences**
+   - **Problem:** CAR properties don't match expected schema (no owner info in AREA_IMOVEL layer)
+   - **Actual fields:**
+     ```json
+     {
+       "cod_imovel": "AC-1200013-...",  // CAR number
+       "num_area": 73.754,              // Area in hectares
+       "ind_status": "PE",              // Status (PE/AT/CA/SU)
+       "municipio": "Acrelandia",
+       "cod_estado": "AC"
+     }
+     ```
+   - **Solution:** Adapted seed script to use available fields, set missing fields to NULL
+
+**Database Schema:**
+```sql
+CREATE TABLE car_registrations (
+  id UUID PRIMARY KEY,
+  car_number VARCHAR(50) UNIQUE NOT NULL,  -- cod_imovel
+  status VARCHAR(50),                      -- ind_status
+  area_ha INTEGER,                         -- num_area
+  state VARCHAR(2) NOT NULL,               -- cod_estado
+  municipality VARCHAR(255),               -- municipio
+  source VARCHAR(50) DEFAULT 'SICAR',
+  geometry geometry(MULTIPOLYGON, 4326),   -- PostGIS
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**File Sizes:**
+- Total: 12 GB GeoJSON (27 states)
+- Largest: BA (1.2 GB), MG (1.2 GB)
+- Smallest: AP (22 MB)
+
+**Performance:**
+- Extract + Convert: ~12 minutes for 27 states
+- Seed (20 small/medium): 12 minutes (3.5M records)
+- Seed (7 large): TBD after splitting
+
+---
+
+### MapBiomas Alerta (Validated Deforestation)
+
+**Status:** ✅ Complete - 35,447 alerts
+
+**Data Source:** https://plataforma.alerta.mapbiomas.org/api
+
+**Implementation:** Task #4 - Implemented with API pagination
+
+**Challenges:**
+- API pagination (5,000 records per request)
+- Rate limiting handling
+- Date range filtering
+
+---
+
+### ANA Outorgas (Water Use Permits)
+
+**Status:** ✅ Complete - 48,179 permits
+
+**Data Source:** ANA public datasets
+
+**Implementation:** Task #5 - CSV download and processing
+
+---
+
+### Best Practices Discovered
+
+1. **Batch INSERT Pattern (Use for ALL large datasets)**
+   ```typescript
+   const batchSize = 50;  // Optimal for PostGIS geometries
+   const valuesClauses = batch.map(item => sql`(...)`);
+   await db.execute(sql`INSERT ... VALUES ${sql.join(valuesClauses, sql`, `)}`);
+   ```
+
+2. **Large File Handling**
+   - Files < 200 MB: Direct JSON.parse() works
+   - Files 200-512 MB: Increase Node memory (`--max-old-space-size=8192`)
+   - Files > 512 MB: Split into chunks using streaming readline
+
+3. **PostGIS Geometry**
+   - Always use `ST_SetSRID(ST_GeomFromGeoJSON(...), 4326)`
+   - NOT `ST_GeomFromText()` with WKT (SQL injection risk)
+   - Column name is `geometry`, not `geom`
+
+4. **Schema Verification**
+   - ALWAYS check actual DB schema before bulk INSERT
+   - Migrations may differ from schema.ts
+   - Use `\d table_name` in psql to verify
+
+5. **Area Units**
+   - PRODES: km² in source → convert to hectares (×100)
+   - CAR: Already in hectares
+   - Always store as `area_ha` (integer) for consistency
+
+6. **State Code Normalization**
+   - Files may have inconsistent naming (AL-AREA vs AL)
+   - Normalize to 2-letter uppercase (AC, AM, BA, etc.)
+
+---
+
 ## Common Pitfalls
 
 1. **PostGIS not installed:** Check with `SELECT PostGIS_version();` in psql
