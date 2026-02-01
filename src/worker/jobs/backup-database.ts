@@ -19,13 +19,13 @@ export async function backupDatabase(): Promise<void> {
     // Note: O script já envia notificação Telegram
     const { stdout, stderr } = await execAsync('npm run backup:database');
 
-    if (stdout) logger.info('Backup output', { stdout });
-    if (stderr) logger.warn('Backup warnings', { stderr });
+    if (stdout) logger.info({ stdout }, 'Backup output');
+    if (stderr) logger.warn({ stderr }, 'Backup warnings');
 
     logger.info('✅ Database backup completed successfully');
 
   } catch (error) {
-    logger.error('❌ Database backup failed', { error });
+    logger.error({ error }, '❌ Database backup failed');
     throw error;
   }
 }
