@@ -8,6 +8,7 @@ import { healthRoutes } from './routes/health.js';
 import { checkRoutes } from './routes/check.js';
 import { sourcesRoutes } from './routes/sources.js';
 import samplesRoutes from './routes/samples.js';
+import { workerRoutes } from './routes/workers.js';
 
 export async function createServer() {
   const app = Fastify({
@@ -29,6 +30,7 @@ export async function createServer() {
   await app.register(checkRoutes);
   await app.register(sourcesRoutes);
   await app.register(samplesRoutes);
+  await app.register(workerRoutes);
 
   // Root endpoint
   app.get('/', async () => {
@@ -41,7 +43,8 @@ export async function createServer() {
         health: '/health',
         check: 'POST /check',
         sources: '/sources',
-        samples: '/samples/*'
+        samples: '/samples/*',
+        workers: '/workers/health'
       }
     };
   });

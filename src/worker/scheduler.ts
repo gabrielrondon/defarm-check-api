@@ -6,7 +6,7 @@
 
 import cron from 'node-cron';
 import { logger } from '../utils/logger.js';
-import { telegram } from '../services/telegram.js';
+import { createJobExecutor } from './job-executor.js';
 
 // Import job handlers
 import { updateDETER } from './jobs/update-deter.js';
@@ -62,43 +62,11 @@ const JOBS: ScheduledJob[] = [
   }
 ];
 
-/**
- * Wrapper que adiciona logs e notificações Telegram
- */
-function wrapJobHandler(job: ScheduledJob) {
-  return async () => {
-    const startTime = Date.now();
-
-    logger.info(`=== ${job.name} STARTED ===`);
-    await telegram.notifyJobStart(job.name);
-
-    try {
-      await job.handler();
-
-      const duration = Math.round((Date.now() - startTime) / 1000);
-
-      logger.info({ duration }, `=== ${job.name} COMPLETED ===`);
-      await telegram.notifyJobSuccess(job.name, duration);
-
-    } catch (error) {
-      const duration = Math.round((Date.now() - startTime) / 1000);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-
-      logger.error({
-        duration,
-        error: errorMessage
-      }, `=== ${job.name} FAILED ===`);
-
-      await telegram.notifyJobFailure(job.name, errorMessage);
-
-      // Não lançar erro para não crashar o worker
-      // Próxima execução tentará novamente
-    }
-  };
-}
+// Removed old wrapJobHandler - now using createJobExecutor from job-executor.ts
 
 /**
  * Setup do scheduler com todos os jobs
+ * Now using enhanced job executor with retry logic and failure tracking
  */
 export function setupScheduler(): ScheduledJob[] {
   const scheduledJobs: ScheduledJob[] = [];
@@ -111,7 +79,15 @@ export function setupScheduler(): ScheduledJob[] {
 
     logger.info({ schedule: job.schedule }, `Scheduling job: ${job.name}`);
 
-    cron.schedule(job.schedule, wrapJobHandler(job), {
+    // Create job executor with retry logic and failure tracking
+    const executor = createJobExecutor(job.name, job.handler, {
+      maxRetries: 3,           // Try 3 times before giving up
+      initialDelayMs: 5000,    // Start with 5s delay
+      maxDelayMs: 300000,      // Max 5 min delay between retries
+      backoffMultiplier: 2     // Exponential backoff (5s, 10s, 20s, ...)
+    });
+
+    cron.schedule(job.schedule, executor, {
       timezone: 'America/Sao_Paulo'  // Horário de Brasília
     });
 
