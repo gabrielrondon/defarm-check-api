@@ -36,6 +36,8 @@
     "seed:queimadas": "tsx scripts/seed-queimadas.ts",
     "data:mapa-organicos": "tsx scripts/download-mapa-organicos.ts",
     "seed:mapa-organicos": "tsx scripts/seed-mapa-organicos.ts",
+    "data:mapbiomas-alerta": "tsx scripts/download-mapbiomas-alerta.ts",
+    "seed:mapbiomas-alerta": "tsx scripts/seed-mapbiomas-alerta.ts",
     "cron:setup": "bash scripts/cron/setup-cron.sh",
     "cron:test-deter": "tsx scripts/cron/update-deter.ts",
     "cron:test-lista-suja": "tsx scripts/cron/update-lista-suja.ts",

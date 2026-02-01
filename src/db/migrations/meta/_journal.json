@@ -92,6 +92,20 @@
       "when": 1769957282181,
       "tag": "0012_round_supreme_intelligence",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1769963323876,
+      "tag": "0013_smart_karen_page",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1769964718095,
+      "tag": "0014_dashing_sleepwalker",
+      "breakpoints": true
     }
   ]
 }

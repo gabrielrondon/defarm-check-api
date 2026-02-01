@@ -107,6 +107,35 @@ export const queimadasFocos = pgTable('queimadas_focos', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 });
 
+// Tabela de Alertas MapBiomas (desmatamento validado)
+// Nota: geometria será gerenciada via SQL direto (PostGIS)
+export const mapbiomasAlerta = pgTable('mapbiomas_alerta', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  alertCode: varchar('alert_code', { length: 50 }).notNull().unique(), // Código único do alerta
+  areaHa: integer('area_ha').notNull(), // Área desmatada em hectares
+  detectedAt: date('detected_at').notNull(), // Data de detecção
+  publishedAt: date('published_at').notNull(), // Data de publicação/validação
+  state: varchar('state', { length: 2 }),
+  municipality: varchar('municipality', { length: 255 }),
+  biome: varchar('biome', { length: 50 }),
+  deforestationClass: varchar('deforestation_class', { length: 100 }), // agriculture, mining, urban, etc
+  deforestationSpeed: varchar('deforestation_speed', { length: 20 }), // slow, moderate, fast
+  source: varchar('source', { length: 50 }), // DETER, SAD, GLAD, etc
+  statusName: varchar('status_name', { length: 50 }).default('published'),
+  // Intersecções com territórios especiais
+  indigenousLand: boolean('indigenous_land').default(false),
+  conservationUnit: boolean('conservation_unit').default(false),
+  embargoedArea: boolean('embargoed_area').default(false),
+  authorizedArea: boolean('authorized_area').default(false),
+  // Dados de propriedades rurais cruzadas
+  carCodes: jsonb('car_codes').$type<string[]>(), // CAR codes que intersectam
+  carIntersectionCount: integer('car_intersection_count').default(0),
+  // Metadados
+  sourceData: varchar('source_data', { length: 50 }).default('MapBiomas Alerta'),
+  // geometria será adicionada via SQL: geometry(MULTIPOLYGON, 4326)
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
 // Tabela de Produtores Orgânicos (MAPA/CNPO)
 export const mapaOrganicos = pgTable('mapa_organicos', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -266,6 +295,16 @@ export const carRegistrationsIdx = {
   stateIdx: 'idx_car_registrations_state',
   statusIdx: 'idx_car_registrations_status',
   ownerDocumentIdx: 'idx_car_registrations_owner_document'
+};
+
+export const mapbiomasAlertaIdx = {
+  alertCodeIdx: 'idx_mapbiomas_alerta_alert_code',
+  detectedAtIdx: 'idx_mapbiomas_alerta_detected_at',
+  publishedAtIdx: 'idx_mapbiomas_alerta_published_at',
+  stateIdx: 'idx_mapbiomas_alerta_state',
+  biomeIdx: 'idx_mapbiomas_alerta_biome',
+  deforestationClassIdx: 'idx_mapbiomas_alerta_deforestation_class',
+  embargoedAreaIdx: 'idx_mapbiomas_alerta_embargoed_area'
 };
 
 // Tabela de API Keys para autenticação
