@@ -26,7 +26,7 @@ import { promisify } from 'util';
 import fs from 'fs/promises';
 import path from 'path';
 import { createLogger, format, transports } from 'winston';
-import { sendTelegramNotification } from '../src/services/telegram.js';
+import { telegram } from '../src/services/telegram.js';
 
 const execAsync = promisify(exec);
 
@@ -242,13 +242,14 @@ async function main() {
     });
 
     // Notificação Telegram (sucesso)
-    await sendTelegramNotification(
-      '✅ *Database Backup Successful*\n\n' +
-      `📅 Date: ${new Date().toISOString().split('T')[0]}\n` +
-      `⏱️ Duration: ${elapsedMin} min\n` +
-      `📦 Location: GitHub branch \`backups\`\n\n` +
-      'Backup uploaded and old backups rotated.'
-    );
+    await telegram.sendMessage({
+      text: '✅ <b>Database Backup Successful</b>\n\n' +
+        `📅 Date: ${new Date().toISOString().split('T')[0]}\n` +
+        `⏱️ Duration: ${elapsedMin} min\n` +
+        `📦 Location: GitHub branch <code>backups</code>\n\n` +
+        'Backup uploaded and old backups rotated.',
+      parse_mode: 'HTML'
+    });
 
     process.exit(0);
 
@@ -261,13 +262,14 @@ async function main() {
     });
 
     // Notificação Telegram (falha)
-    await sendTelegramNotification(
-      '❌ *Database Backup FAILED*\n\n' +
-      `📅 Date: ${new Date().toISOString().split('T')[0]}\n` +
-      `⏱️ Duration: ${elapsedMin} min\n` +
-      `❌ Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
-      'Please check logs and fix the issue.'
-    );
+    await telegram.sendMessage({
+      text: '❌ <b>Database Backup FAILED</b>\n\n' +
+        `📅 Date: ${new Date().toISOString().split('T')[0]}\n` +
+        `⏱️ Duration: ${elapsedMin} min\n` +
+        `❌ Error: ${error instanceof Error ? error.message : String(error)}\n\n` +
+        'Please check logs and fix the issue.',
+      parse_mode: 'HTML'
+    });
 
     process.exit(1);
   }

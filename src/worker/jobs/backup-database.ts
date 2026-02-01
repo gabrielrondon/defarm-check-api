@@ -16,6 +16,7 @@ export async function backupDatabase(): Promise<void> {
 
   try {
     // Executar script de backup
+    // Note: O script já envia notificação Telegram
     const { stdout, stderr } = await execAsync('npm run backup:database');
 
     if (stdout) logger.info('Backup output', { stdout });
