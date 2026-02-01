@@ -139,15 +139,24 @@ async function seedFile(filepath: string, batchSize: number = 50): Promise<numbe
   const filename = path.basename(filepath);
   logger.info(`Reading ${filename}...`);
 
+  console.log(`📖 Reading file: ${filename}...`);
   const content = await fs.readFile(filepath, 'utf-8');
+  console.log(`✅ File read: ${Math.round(content.length / 1024 / 1024)} MB`);
+
+  console.log(`🔍 Parsing JSON...`);
   const geojson = JSON.parse(content);
+  console.log(`✅ JSON parsed`);
 
   if (!geojson.features || !Array.isArray(geojson.features)) {
     throw new Error('Invalid GeoJSON: missing features array');
   }
 
+  console.log(`✅ Features array found: ${geojson.features.length} features`);
+
   const features = geojson.features as ProdesFeature[];
   logger.info(`Processing ${features.length} features from ${filename}`);
+  console.log(`\n📊 Total features to process: ${features.length}`);
+  console.log(`📦 Batch size: ${batchSize}`);
 
   let inserted = 0;
   let failed = 0;
@@ -160,6 +169,7 @@ async function seedFile(filepath: string, batchSize: number = 50): Promise<numbe
     const totalBatches = Math.ceil(features.length / batchSize);
 
     logger.info(`Processing batch ${batchNum}/${totalBatches} (${batch.length} features)`);
+    console.log(`\n🔄 Processing batch ${batchNum}/${totalBatches} (${batch.length} features)`);
 
     // Prepare batch data
     const batchData: Array<{
@@ -175,11 +185,14 @@ async function seedFile(filepath: string, batchSize: number = 50): Promise<numbe
       } catch (error) {
         failed++;
         const errorMsg = error instanceof Error ? error.message : String(error);
+        console.error(`❌ Feature normalization failed:`, errorMsg);
         if (errors.length < 10) {
           errors.push(errorMsg);
         }
       }
     }
+
+    console.log(`✅ Prepared ${batchData.length} features for INSERT (${failed} failed normalization)`);
 
     // Build bulk INSERT query with all rows in batch
     if (batchData.length > 0) {
