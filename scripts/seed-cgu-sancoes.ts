@@ -2,10 +2,9 @@
 /**
  * Script para processar e inserir sanções da CGU no banco
  *
- * Processa arquivos baixados:
- * - data/cgu_ceis.csv (Empresas Inidôneas e Suspensas)
- * - data/cgu_cnep.csv (Empresas Punidas - Lei Anticorrupção)
- * - data/cgu_ceaf.csv (Servidores Expulsos)
+ * Processa arquivos JSON da API:
+ * - data/cgu_ceis_api.json (Empresas Inidôneas e Suspensas)
+ * - data/cgu_cnep_api.json (Empresas Punidas - Lei Anticorrupção)
  *
  * Uso:
  *   npm run seed:cgu-sancoes
@@ -13,7 +12,6 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { parse } from 'csv-parse/sync';
 import { db } from '../src/db/client.js';
 import { cguSancoes } from '../src/db/schema.js';
 import { sql } from 'drizzle-orm';
@@ -55,122 +53,91 @@ function getDocumentType(doc: string): 'CPF' | 'CNPJ' | null {
 }
 
 /**
- * Parse CSV genérico com detecção de colunas
+ * Converte data brasileira (dd/MM/yyyy) para ISO (yyyy-MM-dd)
  */
-async function parseCSV(filePath: string): Promise<any[]> {
-  const content = await fs.readFile(filePath, { encoding: 'latin1' }); // CGU usa latin1
+function convertBRDateToISO(dateStr: string): string | null {
+  if (!dateStr || dateStr === 'Sem informação' || dateStr === 'Sem Informação') return null;
 
-  const records = parse(content, {
-    columns: true,
-    skip_empty_lines: true,
-    delimiter: ';', // CGU usa ponto-e-vírgula
-    trim: true,
-    bom: true,
-    relax_column_count: true
-  });
+  // Formato: dd/MM/yyyy
+  const parts = dateStr.split('/');
+  if (parts.length !== 3) return null;
 
-  return records;
+  const day = parts[0].padStart(2, '0');
+  const month = parts[1].padStart(2, '0');
+  const year = parts[2];
+
+  return `${year}-${month}-${day}`;
 }
 
 /**
- * Mapeia campos do CSV CEIS para schema do banco
+ * Mapeia campos da API CEIS para schema do banco
  */
-function mapCEIS(record: any): any {
-  // Colunas comuns do CEIS (pode variar)
-  const document = normalizeDocument(record['CPF ou CNPJ do Sancionado'] || record['CNPJ'] || record['CPF'] || '');
+function mapCEISFromAPI(record: any): any {
+  const document = normalizeDocument(record.sancionado?.codigoFormatado || record.pessoa?.cpfFormatado || record.pessoa?.cnpjFormatado || '');
   const type = getDocumentType(document);
 
   if (!document || !type) return null;
 
   return {
     document,
-    documentFormatted: record['CPF ou CNPJ do Sancionado'] || '',
+    documentFormatted: record.sancionado?.codigoFormatado || '',
     type,
-    name: record['Nome Sancionado'] || record['Pessoa Jurídica'] || record['Nome'] || '',
+    name: record.sancionado?.nome || record.pessoa?.nome || '',
     sanctionType: 'CEIS',
-    category: record['Tipo Sanção'] || '',
-    startDate: record['Início Sanção'] || null,
-    endDate: record['Fim Sanção'] || null,
-    description: record['Fundamentação Legal'] || record['Motivo'] || '',
-    sanctioningOrgan: record['Órgão Sancionador'] || record['Órgão'] || '',
-    processNumber: record['Número do Processo'] || '',
+    category: record.tipoSancao?.descricaoResumida || '',
+    startDate: convertBRDateToISO(record.dataInicioSancao),
+    endDate: convertBRDateToISO(record.dataFimSancao),
+    description: (record.fundamentacao?.[0]?.codigo || record.fundamentacao?.[0]?.descricao || '').substring(0, 1000), // Limit to avoid huge texts
+    sanctioningOrgan: record.orgaoSancionador?.nome || '',
+    processNumber: record.numeroProcesso || '',
     status: 'ATIVO',
-    federativeUnit: record['UF'] || null,
-    municipality: record['Município'] || null,
+    federativeUnit: record.orgaoSancionador?.siglaUf || null,
+    municipality: null,
     source: 'CGU'
   };
 }
 
 /**
- * Mapeia campos do CSV CNEP para schema do banco
+ * Mapeia campos da API CNEP para schema do banco
  */
-function mapCNEP(record: any): any {
-  const document = normalizeDocument(record['CNPJ ou CPF do Sancionado'] || record['CNPJ'] || record['CPF'] || '');
+function mapCNEPFromAPI(record: any): any {
+  const document = normalizeDocument(record.sancionado?.codigoFormatado || record.pessoa?.cpfFormatado || record.pessoa?.cnpjFormatado || '');
   const type = getDocumentType(document);
 
   if (!document || !type) return null;
 
   return {
     document,
-    documentFormatted: record['CNPJ ou CPF do Sancionado'] || '',
+    documentFormatted: record.sancionado?.codigoFormatado || '',
     type,
-    name: record['Razão Social'] || record['Nome'] || '',
+    name: record.sancionado?.nome || record.pessoa?.nome || '',
     sanctionType: 'CNEP',
-    category: record['Tipo Sanção'] || 'Multa Lei Anticorrupção',
-    startDate: record['Data Início Sanção'] || null,
-    endDate: record['Data Final Sanção'] || null,
-    description: record['Descrição'] || record['Infração'] || '',
-    sanctioningOrgan: record['Órgão Sancionador'] || '',
-    processNumber: record['Número Processo'] || '',
+    category: record.tipoSancao?.descricaoResumida || 'Multa Lei Anticorrupção',
+    startDate: convertBRDateToISO(record.dataInicioSancao),
+    endDate: convertBRDateToISO(record.dataFimSancao),
+    description: (record.fundamentacao?.[0]?.codigo || record.fundamentacao?.[0]?.descricao || '').substring(0, 1000),
+    sanctioningOrgan: record.orgaoSancionador?.nome || '',
+    processNumber: record.numeroProcesso || '',
     status: 'ATIVO',
-    federativeUnit: record['UF'] || null,
+    federativeUnit: record.orgaoSancionador?.siglaUf || null,
     municipality: null,
     source: 'CGU'
   };
 }
 
 /**
- * Mapeia campos do CSV CEAF para schema do banco
- */
-function mapCEAF(record: any): any {
-  const document = normalizeDocument(record['CPF'] || '');
-  const type = getDocumentType(document);
-
-  if (!document || !type) return null;
-
-  return {
-    document,
-    documentFormatted: record['CPF'] || '',
-    type,
-    name: record['Nome'] || '',
-    sanctionType: 'CEAF',
-    category: 'Expulsão Administração Federal',
-    startDate: record['Data Publicação'] || null,
-    endDate: null,
-    description: record['Fundamentação Legal'] || record['Motivo'] || '',
-    sanctioningOrgan: record['Órgão Lotação'] || '',
-    processNumber: record['Número do Processo'] || '',
-    status: 'ATIVO',
-    federativeUnit: record['UF'] || null,
-    municipality: null,
-    source: 'CGU'
-  };
-}
-
-/**
- * Seed CEIS
+ * Seed CEIS from API JSON
  */
 async function seedCEIS(): Promise<number> {
-  const filePath = path.join(DATA_DIR, 'cgu_ceis.csv');
+  const filePath = path.join(DATA_DIR, 'cgu_ceis_api.json');
 
   try {
-    const stats = await fs.stat(filePath);
-    logger.info(`Processing CEIS file: ${(stats.size / (1024 * 1024)).toFixed(2)} MB`);
+    const content = await fs.readFile(filePath, 'utf-8');
+    const records = JSON.parse(content);
 
-    const records = await parseCSV(filePath);
-    logger.info(`Parsed ${records.length} CEIS records`);
+    logger.info(`Parsed ${records.length} CEIS records from API`);
 
-    const mapped = records.map(mapCEIS).filter(Boolean);
+    const mapped = records.map(mapCEISFromAPI).filter(Boolean);
     logger.info(`Mapped ${mapped.length} valid records`);
 
     if (mapped.length === 0) {
@@ -193,7 +160,7 @@ async function seedCEIS(): Promise<number> {
 
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-      logger.warn('CEIS file not found - skipping');
+      logger.warn('CEIS API file not found - skipping');
       return 0;
     }
     throw error;
@@ -201,19 +168,18 @@ async function seedCEIS(): Promise<number> {
 }
 
 /**
- * Seed CNEP
+ * Seed CNEP from API JSON
  */
 async function seedCNEP(): Promise<number> {
-  const filePath = path.join(DATA_DIR, 'cgu_cnep.csv');
+  const filePath = path.join(DATA_DIR, 'cgu_cnep_api.json');
 
   try {
-    const stats = await fs.stat(filePath);
-    logger.info(`Processing CNEP file: ${(stats.size / (1024 * 1024)).toFixed(2)} MB`);
+    const content = await fs.readFile(filePath, 'utf-8');
+    const records = JSON.parse(content);
 
-    const records = await parseCSV(filePath);
-    logger.info(`Parsed ${records.length} CNEP records`);
+    logger.info(`Parsed ${records.length} CNEP records from API`);
 
-    const mapped = records.map(mapCNEP).filter(Boolean);
+    const mapped = records.map(mapCNEPFromAPI).filter(Boolean);
     logger.info(`Mapped ${mapped.length} valid records`);
 
     if (mapped.length === 0) {
@@ -235,49 +201,7 @@ async function seedCNEP(): Promise<number> {
 
   } catch (error: any) {
     if (error.code === 'ENOENT') {
-      logger.warn('CNEP file not found - skipping');
-      return 0;
-    }
-    throw error;
-  }
-}
-
-/**
- * Seed CEAF
- */
-async function seedCEAF(): Promise<number> {
-  const filePath = path.join(DATA_DIR, 'cgu_ceaf.csv');
-
-  try {
-    const stats = await fs.stat(filePath);
-    logger.info(`Processing CEAF file: ${(stats.size / (1024 * 1024)).toFixed(2)} MB`);
-
-    const records = await parseCSV(filePath);
-    logger.info(`Parsed ${records.length} CEAF records`);
-
-    const mapped = records.map(mapCEAF).filter(Boolean);
-    logger.info(`Mapped ${mapped.length} valid records`);
-
-    if (mapped.length === 0) {
-      logger.warn('No valid CEAF records to insert');
-      return 0;
-    }
-
-    const batchSize = 500;
-    let inserted = 0;
-
-    for (let i = 0; i < mapped.length; i += batchSize) {
-      const batch = mapped.slice(i, i + batchSize);
-      await db.insert(cguSancoes).values(batch).onConflictDoNothing();
-      inserted += batch.length;
-      logger.info(`Inserted ${inserted}/${mapped.length} CEAF records`);
-    }
-
-    return inserted;
-
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
-      logger.warn('CEAF file not found - skipping');
+      logger.warn('CNEP API file not found - skipping');
       return 0;
     }
     throw error;
@@ -286,7 +210,7 @@ async function seedCEAF(): Promise<number> {
 
 async function main() {
   logger.info('='.repeat(60));
-  logger.info('CGU Sanções - Seed Database');
+  logger.info('CGU Sanções - Seed Database from API');
   logger.info('='.repeat(60));
 
   // Clear existing data
@@ -297,9 +221,8 @@ async function main() {
   // Seed all sources
   const ceisCount = await seedCEIS();
   const cnepCount = await seedCNEP();
-  const ceafCount = await seedCEAF();
 
-  const total = ceisCount + cnepCount + ceafCount;
+  const total = ceisCount + cnepCount;
 
   // Get final counts
   const result = await db.execute(sql`
@@ -315,7 +238,6 @@ async function main() {
   logger.info('Seed Summary:');
   logger.info(`  CEIS: ${ceisCount} records`);
   logger.info(`  CNEP: ${cnepCount} records`);
-  logger.info(`  CEAF: ${ceafCount} records`);
   logger.info(`  TOTAL: ${total} records`);
   logger.info('');
   logger.info('Database counts:');
@@ -325,7 +247,7 @@ async function main() {
   logger.info('='.repeat(60));
 
   if (total === 0) {
-    logger.error('❌ No records inserted! Check if CSV files exist and have correct format.');
+    logger.error('❌ No records inserted! Check if API JSON files exist.');
     process.exit(1);
   }
 
