@@ -10,6 +10,7 @@ import { createJobExecutor } from './job-executor.js';
 
 // Import job handlers
 import { updateDETER } from './jobs/update-deter.js';
+import { updatePRODES } from './jobs/update-prodes.js';
 import { updateListaSuja } from './jobs/update-lista-suja.js';
 import { updateCguSancoes } from './jobs/update-cgu-sancoes.js';
 import { updateIbama } from './jobs/update-ibama.js';
@@ -31,6 +32,12 @@ const JOBS: ScheduledJob[] = [
     name: 'DETER Alerts',
     schedule: '0 3 * * *',  // Diária, 03:00
     handler: updateDETER,
+    enabled: true
+  },
+  {
+    name: 'PRODES Deforestation',
+    schedule: '0 5 1 * *',  // Mensal (dia 1), 05:00
+    handler: updatePRODES,
     enabled: true
   },
   {
