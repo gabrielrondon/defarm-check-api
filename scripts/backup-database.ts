@@ -44,7 +44,9 @@ const logger = createLogger({
   transports: [new transports.Console()]
 });
 
-const DATABASE_URL = process.env.DATABASE_URL;
+// Use BACKUP_DATABASE_URL if available (for testing with public URL)
+// Otherwise fall back to DATABASE_URL (production worker will use internal URL)
+const DATABASE_URL = process.env.BACKUP_DATABASE_URL || process.env.DATABASE_URL;
 const BACKUP_DIR = path.join(process.cwd(), 'backups');
 const MAX_BACKUPS = 7; // Manter últimos 7 backups
 
