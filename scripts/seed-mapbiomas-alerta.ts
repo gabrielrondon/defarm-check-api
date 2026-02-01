@@ -31,6 +31,37 @@ const logger = createLogger({
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 
+// Map state names to UF codes
+const STATE_TO_UF: Record<string, string> = {
+  'ACRE': 'AC',
+  'ALAGOAS': 'AL',
+  'AMAPÁ': 'AP',
+  'AMAZONAS': 'AM',
+  'BAHIA': 'BA',
+  'CEARÁ': 'CE',
+  'DISTRITO FEDERAL': 'DF',
+  'ESPÍRITO SANTO': 'ES',
+  'GOIÁS': 'GO',
+  'MARANHÃO': 'MA',
+  'MATO GROSSO': 'MT',
+  'MATO GROSSO DO SUL': 'MS',
+  'MINAS GERAIS': 'MG',
+  'PARÁ': 'PA',
+  'PARAÍBA': 'PB',
+  'PARANÁ': 'PR',
+  'PERNAMBUCO': 'PE',
+  'PIAUÍ': 'PI',
+  'RIO DE JANEIRO': 'RJ',
+  'RIO GRANDE DO NORTE': 'RN',
+  'RIO GRANDE DO SUL': 'RS',
+  'RONDÔNIA': 'RO',
+  'RORAIMA': 'RR',
+  'SANTA CATARINA': 'SC',
+  'SÃO PAULO': 'SP',
+  'SERGIPE': 'SE',
+  'TOCANTINS': 'TO'
+};
+
 /**
  * Mapeia alert do MapBiomas para schema do banco
  */
@@ -65,20 +96,26 @@ function mapAlert(alert: any): any {
     }
   }
 
-  // Handle string fields from API (crossed fields are comma-separated strings)
-  const state = alert.crossedStates ? alert.crossedStates.split(',')[0].trim() : null;
-  const municipality = alert.crossedCities ? alert.crossedCities.split(',')[0].trim() : null;
-  const biome = alert.crossedBiomes ? alert.crossedBiomes.split(',')[0].trim() : null;
+  // Handle crossed fields (can be arrays or null)
+  const state = Array.isArray(alert.crossedStates) && alert.crossedStates.length > 0
+    ? alert.crossedStates[0] : null;
+  const municipality = Array.isArray(alert.crossedCities) && alert.crossedCities.length > 0
+    ? alert.crossedCities[0] : null;
+  const biome = Array.isArray(alert.crossedBiomes) && alert.crossedBiomes.length > 0
+    ? alert.crossedBiomes[0] : null;
 
-  const hasIndigenousLand = alert.crossedIndigenousLands && alert.crossedIndigenousLands.length > 0;
-  const hasConservationUnit = alert.crossedConservationUnits && alert.crossedConservationUnits.length > 0;
+  const hasIndigenousLand = Array.isArray(alert.crossedIndigenousLands) && alert.crossedIndigenousLands.length > 0;
+  const hasConservationUnit = Array.isArray(alert.crossedConservationUnits) && alert.crossedConservationUnits.length > 0;
+
+  // Map state name to UF code
+  const stateUF = state ? STATE_TO_UF[state.toUpperCase()] || state.substring(0, 2) : null;
 
   return {
     alertCode: String(alert.alertCode).trim(),
     areaHa: Math.round(Number(alert.areaHa) || 0),
     detectedAt: alert.detectedAt,
     publishedAt: alert.publishedAt,
-    state: state ? state.substring(0, 2) : null, // Get UF code (first 2 chars)
+    state: stateUF,
     municipality: municipality ? municipality.substring(0, 255) : null,
     biome: biome ? biome.substring(0, 50) : null,
     deforestationClass: deforestationClass.substring(0, 100) || null,
@@ -114,7 +151,23 @@ async function main() {
     const mapped = alerts.map(mapAlert).filter(Boolean);
     logger.info(`Mapped ${mapped.length} valid alerts`);
 
-    if (mapped.length === 0) {
+    // Deduplicate by alert_code (keep first occurrence)
+    const seen = new Set<string>();
+    const deduplicated = mapped.filter(alert => {
+      if (seen.has(alert.alertCode)) {
+        return false;
+      }
+      seen.add(alert.alertCode);
+      return true;
+    });
+
+    const duplicatesRemoved = mapped.length - deduplicated.length;
+    if (duplicatesRemoved > 0) {
+      logger.info(`Removed ${duplicatesRemoved} duplicate alert codes`);
+    }
+    logger.info(`Final count: ${deduplicated.length} unique alerts`);
+
+    if (deduplicated.length === 0) {
       logger.warn('No valid records to insert');
       return;
     }
@@ -128,8 +181,8 @@ async function main() {
     let inserted = 0;
     let geometriesUpdated = 0;
 
-    for (let i = 0; i < mapped.length; i += batchSize) {
-      const batch = mapped.slice(i, i + batchSize);
+    for (let i = 0; i < deduplicated.length; i += batchSize) {
+      const batch = deduplicated.slice(i, i + batchSize);
 
       // Separate geometry from other fields
       const recordsWithoutGeom = batch.map(({ geometryWkt, ...rest }) => rest);
@@ -160,7 +213,7 @@ async function main() {
         }
       }
 
-      logger.info(`Inserted ${inserted}/${mapped.length} alerts (${geometriesUpdated} geometries)`);
+      logger.info(`Inserted ${inserted}/${deduplicated.length} alerts (${geometriesUpdated} geometries)`);
     }
 
     // Get statistics

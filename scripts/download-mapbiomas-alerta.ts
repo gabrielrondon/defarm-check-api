@@ -160,7 +160,7 @@ async function fetchAlerts(token: string, config: MapBiomasConfig): Promise<any[
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          timeout: 60000
+          timeout: 120000 // 2 minutes
         }
       );
 
@@ -211,6 +211,16 @@ async function main() {
     process.exit(1);
   }
 
+  // Parse command line arguments for date range
+  const args = process.argv.slice(2);
+  const monthsArg = args.find(arg => arg.startsWith('--months='));
+  const offsetArg = args.find(arg => arg.startsWith('--offset='));
+  const outputArg = args.find(arg => arg.startsWith('--output='));
+
+  const months = monthsArg ? parseInt(monthsArg.split('=')[1]) : 6; // Default 6 months
+  const offset = offsetArg ? parseInt(offsetArg.split('=')[1]) : 0; // Default 0 (most recent)
+  const outputFile = outputArg ? outputArg.split('=')[1] : 'mapbiomas_alerta.json';
+
   // Ensure data directory exists
   await fs.mkdir(DATA_DIR, { recursive: true });
 
@@ -220,22 +230,28 @@ async function main() {
     // Authenticate
     const token = await authenticate(email, password);
 
-    // Fetch alerts (last 12 months by default)
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    // Calculate date range
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() - offset);
+
+    const startDate = new Date(endDate);
+    startDate.setMonth(startDate.getMonth() - months);
+
+    logger.info(`Date range: ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
+    logger.info(`Period: ${months} months (offset: ${offset} months)`);
 
     const config: MapBiomasConfig = {
       email,
       password,
-      startDate: oneYearAgo.toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0],
       minAreaHa: 1.0 // Minimum 1 hectare
     };
 
     const alerts = await fetchAlerts(token, config);
 
     // Save to JSON
-    const outputPath = path.join(DATA_DIR, 'mapbiomas_alerta.json');
+    const outputPath = path.join(DATA_DIR, outputFile);
     await fs.writeFile(outputPath, JSON.stringify(alerts, null, 2));
 
     const stats = await fs.stat(outputPath);
