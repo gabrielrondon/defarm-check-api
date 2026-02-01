@@ -65,7 +65,7 @@ const JOBS: ScheduledJob[] = [
     name: 'Database Backup',
     schedule: '0 1 * * 0',  // Semanal (domingo), 01:00
     handler: backupDatabase,
-    enabled: true
+    enabled: false  // DISABLED: Script runs locally, not in Railway
   }
 ];
 
