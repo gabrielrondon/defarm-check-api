@@ -161,30 +161,27 @@ async function seedFile(filepath: string, batchSize: number = 500): Promise<numb
 
     logger.info(`Processing batch ${batchNum}/${totalBatches} (${batch.length} features)`);
 
+    // Batch insert with a single query per batch
     for (const feature of batch) {
       try {
         const normalized = normalizeProperties(feature.properties);
-
-        // Convert GeoJSON geometry to WKT for PostGIS
         const geomJson = JSON.stringify(feature.geometry);
 
-        // Insert record
-        const [record] = await db.insert(prodesDeforestation).values({
-          year: normalized.year,
-          areaKm2: normalized.areaKm2,
-          state: normalized.state,
-          municipality: normalized.municipality,
-          className: normalized.className,
-          pathRow: normalized.pathRow,
-          imageDate: normalized.imageDate,
-          source: normalized.source
-        }).returning({ id: prodesDeforestation.id });
-
-        // Update geometry using PostGIS ST_GeomFromGeoJSON
+        // Single INSERT with geometry - much faster than INSERT + UPDATE
         await db.execute(sql`
-          UPDATE prodes_deforestation
-          SET geom = ST_SetSRID(ST_GeomFromGeoJSON(${geomJson}), 4326)
-          WHERE id = ${record.id}
+          INSERT INTO prodes_deforestation (
+            year, area_km2, state, municipality, class_name, path_row, image_date, source, geom
+          ) VALUES (
+            ${normalized.year},
+            ${normalized.areaKm2},
+            ${normalized.state},
+            ${normalized.municipality},
+            ${normalized.className},
+            ${normalized.pathRow},
+            ${normalized.imageDate},
+            ${normalized.source},
+            ST_SetSRID(ST_GeomFromGeoJSON(${geomJson}), 4326)
+          )
         `);
 
         inserted++;
