@@ -36,6 +36,7 @@
     "cron:test-car": "tsx scripts/cron/update-car.ts",
     "cron:check-health": "tsx scripts/cron/check-data-freshness.ts",
     "test:telegram": "tsx scripts/test-telegram.ts",
+    "benchmark:spatial": "tsx scripts/benchmark-spatial.ts",
     "seed:lista-suja-simple": "tsx scripts/seed-lista-suja-simple.ts",
     "seed:ibama-simple": "tsx scripts/seed-ibama-simple.ts",
     "seed:all-production": "tsx scripts/seed-all-production.ts",
