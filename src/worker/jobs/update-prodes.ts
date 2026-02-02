@@ -105,13 +105,14 @@ export async function updatePRODES(): Promise<void> {
       )
     ].join('\n');
 
-    await telegram.sendMessage(message);
+    await telegram.sendMessage({ text: message, parse_mode: 'Markdown' });
 
   } catch (error) {
-    logger.error('Failed to update PRODES', { error });
-    await telegram.sendMessage(
-      `❌ *PRODES Update Failed*\n\n${error instanceof Error ? error.message : String(error)}`
-    );
+    logger.error({ err: error, msg: 'Failed to update PRODES' });
+    await telegram.sendMessage({
+      text: `❌ *PRODES Update Failed*\n\n${error instanceof Error ? error.message : String(error)}`,
+      parse_mode: 'Markdown'
+    });
     throw error;
   }
 }

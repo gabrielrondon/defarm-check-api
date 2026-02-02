@@ -12,7 +12,8 @@
  */
 
 import { BaseChecker } from '../base.js';
-import { CheckerMetadata, CheckerConfig, CheckerResult, NormalizedInput, InputType, CheckerCategory } from '../../types/checker.js';
+import { CheckerMetadata, CheckerConfig, CheckerResult, CheckerCategory, CheckStatus, Severity } from '../../types/checker.js';
+import { NormalizedInput, InputType } from '../../types/input.js';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 
@@ -22,12 +23,7 @@ export class AnaOutorgasChecker extends BaseChecker {
     category: CheckerCategory.ENVIRONMENTAL,
     description: 'Verifica autorizações de uso de recursos hídricos (outorgas) em rios federais (ANA)',
     priority: 6, // Lower priority - coordinate-based only
-    supportedInputTypes: [InputType.COORDINATES, InputType.CAR],
-    dataSource: {
-      name: 'Agência Nacional de Águas e Saneamento Básico (ANA)',
-      url: 'https://dadosabertos.ana.gov.br/',
-      updateFrequency: 'continuous'
-    }
+    supportedInputTypes: [InputType.COORDINATES, InputType.CAR]
   };
 
   readonly config: CheckerConfig = {
@@ -41,10 +37,15 @@ export class AnaOutorgasChecker extends BaseChecker {
    */
   async checkByCoordinates(input: NormalizedInput): Promise<CheckerResult> {
     if (!input.coordinates) {
-      return this.createResult('FAIL', 'Missing coordinates for ANA check');
+      return {
+        status: CheckStatus.ERROR,
+        message: 'Missing coordinates for ANA check',
+        executionTimeMs: 0,
+        cached: false
+      };
     }
 
-    const { latitude, longitude } = input.coordinates;
+    const { lat, lon } = input.coordinates;
     const radiusMeters = 5000; // 5km search radius
 
     // Find outorgas within radius
@@ -62,13 +63,13 @@ export class AnaOutorgasChecker extends BaseChecker {
         volume_anual_m3,
         ST_Distance(
           geom::geography,
-          ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography
+          ST_SetSRID(ST_MakePoint(${lon}, ${lat}), 4326)::geography
         ) as distance_meters
       FROM ana_outorgas
       WHERE
         ST_DWithin(
           geom::geography,
-          ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography,
+          ST_SetSRID(ST_MakePoint(${lon}, ${lat}), 4326)::geography,
           ${radiusMeters}
         )
         AND data_vencimento IS NOT NULL
@@ -79,7 +80,12 @@ export class AnaOutorgasChecker extends BaseChecker {
     const outorgas = result.rows;
 
     if (outorgas.length === 0) {
-      return this.createResult('PASS', 'Nenhuma outorga de recursos hídricos encontrada em raio de 5km');
+      return {
+        status: CheckStatus.PASS,
+        message: 'Nenhuma outorga de recursos hídricos encontrada em raio de 5km',
+        executionTimeMs: 0,
+        cached: false
+      };
     }
 
     // Separate valid and expired
@@ -116,33 +122,53 @@ export class AnaOutorgasChecker extends BaseChecker {
 
     // INFO - having water permits is not a violation
     // User can verify if permit is valid for intended use
-    return this.createResult('INFO', message, details);
+    return {
+      status: CheckStatus.PASS,
+      message,
+      details,
+      evidence: {
+        dataSource: 'Agência Nacional de Águas e Saneamento Básico (ANA)',
+        url: 'https://dadosabertos.ana.gov.br/'
+      },
+      executionTimeMs: 0,
+      cached: false
+    };
   }
 
   /**
    * Check by CAR code - extracts coordinates from CAR and checks for outorgas
    */
   async checkByCAR(input: NormalizedInput): Promise<CheckerResult> {
-    if (!input.car) {
-      return this.createResult('FAIL', 'Missing CAR code');
+    if (!input.value) {
+      return {
+        status: CheckStatus.ERROR,
+        message: 'Missing CAR code',
+        executionTimeMs: 0,
+        cached: false
+      };
     }
 
     // Get CAR coordinates
     const carResult = await db.execute(sql`
       SELECT
-        ST_Y(ST_Centroid(geom::geometry)) as latitude,
-        ST_X(ST_Centroid(geom::geometry)) as longitude
+        ST_Y(ST_Centroid(geom::geometry)) as lat,
+        ST_X(ST_Centroid(geom::geometry)) as lon
       FROM car_registrations
-      WHERE car_number = ${input.car}
+      WHERE car_number = ${input.value}
       AND geom IS NOT NULL
       LIMIT 1
     `);
 
     if (carResult.rows.length === 0) {
-      return this.createResult('FAIL', 'CAR coordinates not found - unable to check water permits');
+      return {
+        status: CheckStatus.ERROR,
+        message: 'CAR coordinates not found - unable to check water permits',
+        executionTimeMs: 0,
+        cached: false
+      };
     }
 
-    const coordinates = carResult.rows[0] as { latitude: number; longitude: number };
+    const coordinates = carResult.rows[0] as { lat: number; lon: number };
 
     // Reuse coordinates check
     const coordInput: NormalizedInput = {
@@ -161,10 +187,12 @@ export class AnaOutorgasChecker extends BaseChecker {
       return await this.checkByCAR(input);
     }
 
-    return this.createResult(
-      'SKIP',
-      'ANA outorgas check requires coordinates or CAR code (CPF/CNPJ not supported)'
-    );
+    return {
+      status: CheckStatus.NOT_APPLICABLE,
+      message: 'ANA outorgas check requires coordinates or CAR code (CPF/CNPJ not supported)',
+      executionTimeMs: 0,
+      cached: false
+    };
   }
 }
 
