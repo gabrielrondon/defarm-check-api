@@ -17,6 +17,7 @@ import { ConservationUnitChecker } from './environmental/conservation-units.js';
 import { QueimadasChecker } from './environmental/queimadas.js';
 import { MapBiomasAlertaChecker } from './environmental/mapbiomas-alerta.js';
 import { AnaOutorgasChecker } from './environmental/ana-outorgas.js';
+import { CarProdesIntersectionChecker } from './environmental/car-prodes-intersection.js';
 
 // Positive checkers (certifications, compliance indicators)
 import { MapaOrganicosChecker } from './positive/mapa-organicos.js';
@@ -34,6 +35,7 @@ checkerRegistry.register(new QueimadasChecker());
 checkerRegistry.register(new MapBiomasAlertaChecker());
 checkerRegistry.register(new MapaOrganicosChecker());
 checkerRegistry.register(new AnaOutorgasChecker());
+checkerRegistry.register(new CarProdesIntersectionChecker());
 
 export { checkerRegistry };
 export * from './base.js';
