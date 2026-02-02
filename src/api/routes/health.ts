@@ -10,10 +10,10 @@ const FRESHNESS_THRESHOLDS = {
   'DETER Alerts': { warning: 48, stale: 96 }, // Daily updates (2-4 days)
   'IBAMA Embargoes': { warning: 168, stale: 336 }, // Weekly updates (7-14 days)
   'Slave Labor Registry': { warning: 720, stale: 1440 }, // Monthly updates (30-60 days)
-  'PRODES Deforestation': { warning: 720, stale: 1440 }, // Monthly updates
-  'Terras Indígenas': { warning: 720, stale: 1440 }, // Monthly updates
-  'Unidades de Conservação': { warning: 720, stale: 1440 }, // Monthly updates
-  'CAR Registry': { warning: 720, stale: 1440 } // Monthly updates
+  'PRODES Deforestation': { warning: 2160, stale: 4320 }, // Biannual updates (90-180 days) - PRODES é anual
+  'Terras Indígenas': { warning: 1440, stale: 2880 }, // Quarterly updates (60-120 days) - Dados geográficos estáveis
+  'Unidades de Conservação': { warning: 1440, stale: 2880 }, // Quarterly updates (60-120 days) - Dados geográficos estáveis
+  'CAR Registry': { warning: 1080, stale: 2160 } // Quarterly updates (45-90 days) - Updates manuais/batch
 };
 
 async function getDataFreshness() {
