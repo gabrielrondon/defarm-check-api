@@ -52,14 +52,27 @@ paths:
         - check
       summary: Execute compliance check
       description: |
-        Executa verificação de compliance socioambiental para um input (CNPJ, CPF, coordenadas, etc).
+        Executa verificação de compliance socioambiental para um input (CNPJ, CPF, CAR, coordenadas ou endereço).
 
         A API consulta múltiplas fontes em paralelo e retorna um veredito agregado com score de 0-100.
 
+        **Tipos de Input:**
+        - **CNPJ/CPF**: Documentos de pessoa física ou jurídica (com ou sem formatação)
+        - **CAR**: Número do Cadastro Ambiental Rural (formato: UF-MUNICÍPIO-CÓDIGO)
+        - **COORDINATES**: Coordenadas GPS (lat/lon em decimal WGS84)
+        - **ADDRESS**: Endereço brasileiro em texto livre (geocodificado automaticamente)
+
+        **Geocoding (ADDRESS):**
+        - Endereços são convertidos automaticamente para coordenadas
+        - Provider: OpenStreetMap Nominatim (gratuito)
+        - Suporta abreviações de estado (PA → Pará, SP → São Paulo, etc.)
+        - Cache de 1 ano (requisições subsequentes: <100ms)
+        - Rate limit: 1 req/s para geocoding (Nominatim policy)
+
         **Performance:**
-        - Primeira requisição: ~200ms
-        - Com cache: ~10ms
-        - Cache TTL: 7 dias
+        - Primeira requisição: ~200ms (CNPJ/CPF/CAR), ~1-2s (ADDRESS c/ geocoding)
+        - Com cache: ~10ms (checkers), ~100ms (ADDRESS cached)
+        - Cache TTL: 7 dias (checkers), 1 ano (geocoding)
 
         **Rate limit:** 10,000 requisições/minuto por API key
       operationId: executeCheck
@@ -98,6 +111,18 @@ paths:
                     value:
                       lat: -7.0945
                       lon: -61.089
+              address:
+                summary: Verificar por endereço (geocoding automático)
+                value:
+                  input:
+                    type: ADDRESS
+                    value: "Altamira, Pará"
+              address_full:
+                summary: Endereço completo
+                value:
+                  input:
+                    type: ADDRESS
+                    value: "São Paulo, SP"
               with_options:
                 summary: Com opções customizadas
                 value:
@@ -834,11 +859,21 @@ components:
                 - CPF
                 - CAR
                 - COORDINATES
+                - ADDRESS
               description: Tipo do input a ser verificado
             value:
               oneOf:
                 - type: string
-                  description: CNPJ, CPF ou CAR (com ou sem formatação)
+                  description: |
+                    CNPJ, CPF, CAR (com ou sem formatação) ou ADDRESS (endereço brasileiro em texto livre).
+
+                    Exemplos de endereço:
+                    - "São Paulo, SP"
+                    - "Altamira, Pará"
+                    - "Brasília, DF"
+                    - "Rua Augusta 123, São Paulo"
+
+                    Endereços são geocodificados automaticamente para coordenadas usando OpenStreetMap Nominatim.
                 - type: object
                   description: Coordenadas geográficas
                   required:
