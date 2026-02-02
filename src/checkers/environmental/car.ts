@@ -50,7 +50,7 @@ export class CARChecker extends BaseChecker {
     category: CheckerCategory.ENVIRONMENTAL,
     description: 'Verifica se propriedade possui CAR (Cadastro Ambiental Rural) válido',
     priority: 8,
-    supportedInputTypes: [InputType.COORDINATES]
+    supportedInputTypes: [InputType.CAR, InputType.COORDINATES]
   };
 
   readonly config: CheckerConfig = {
@@ -60,11 +60,130 @@ export class CARChecker extends BaseChecker {
   };
 
   /**
-   * Check se coordenadas caem em propriedade com CAR
+   * Execute check based on input type
    */
   async executeCheck(input: NormalizedInput): Promise<CheckerResult> {
     logger.debug({ input: input.value }, 'Checking CAR registration');
 
+    try {
+      // Route to appropriate check method based on input type
+      if (input.type === InputType.COORDINATES) {
+        return await this.checkByCoordinates(input);
+      } else if (input.type === InputType.CAR) {
+        return await this.checkByCarNumber(input);
+      }
+
+      return {
+        status: CheckStatus.NOT_APPLICABLE,
+        message: 'Input type not supported for CAR check',
+        executionTimeMs: 0,
+        cached: false
+      };
+    } catch (err) {
+      throw new Error(`Failed to check CAR: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Check CAR by CAR number (direct lookup)
+   */
+  private async checkByCarNumber(input: NormalizedInput): Promise<CheckerResult> {
+    const carNumber = input.value;
+    if (!carNumber) {
+      throw new Error('CAR number required');
+    }
+
+    try {
+      const result = await db.execute(sql`
+        SELECT
+          car_number,
+          status,
+          area_ha,
+          municipality,
+          state
+        FROM car_registrations
+        WHERE car_number = ${carNumber}
+        LIMIT 1
+      `);
+
+      if (!result.rows || result.rows.length === 0) {
+        return {
+          status: CheckStatus.ERROR,
+          message: `CAR registration not found: ${carNumber}`,
+          details: {
+            car_number: carNumber,
+            error: 'CAR not found in database',
+            note: 'CAR may exist but not in our database coverage (10 priority states)'
+          },
+          evidence: {
+            dataSource: 'SICAR - Sistema Nacional de Cadastro Ambiental Rural',
+            url: `https://www.car.gov.br/publico/imoveis/index?car=${carNumber}`,
+            lastUpdate: new Date().toISOString().split('T')[0]
+          },
+          executionTimeMs: 0,
+          cached: false
+        };
+      }
+
+      const car: any = result.rows[0];
+      const status = String(car.status || 'UNKNOWN').toUpperCase();
+
+      // Determine status and severity
+      let severity: Severity = Severity.LOW;
+      let checkStatus: CheckStatus = CheckStatus.PASS;
+      let message = '';
+
+      if (status === 'ATIVO' || status === 'AT') {
+        checkStatus = CheckStatus.PASS;
+        severity = Severity.LOW;
+        message = `CAR registration is active: ${car.car_number}`;
+      } else if (status === 'PENDENTE' || status === 'PE') {
+        checkStatus = CheckStatus.FAIL;
+        severity = Severity.MEDIUM;
+        message = `CAR registration is pending: ${car.car_number}`;
+      } else if (status === 'CANCELADO' || status === 'CA') {
+        checkStatus = CheckStatus.FAIL;
+        severity = Severity.CRITICAL;
+        message = `CAR registration is cancelled: ${car.car_number}`;
+      } else if (status === 'SUSPENSO' || status === 'SU') {
+        checkStatus = CheckStatus.FAIL;
+        severity = Severity.HIGH;
+        message = `CAR registration is suspended: ${car.car_number}`;
+      } else {
+        checkStatus = CheckStatus.WARNING;
+        severity = Severity.MEDIUM;
+        message = `CAR registration has unknown status: ${car.car_number}`;
+      }
+
+      return {
+        status: checkStatus,
+        severity,
+        message,
+        details: {
+          car_number: car.car_number,
+          car_status: status,
+          area_ha: car.area_ha,
+          municipality: car.municipality,
+          state: car.state,
+          recommendation: this.getRecommendation(status)
+        },
+        evidence: {
+          dataSource: 'SICAR - Sistema Nacional de Cadastro Ambiental Rural',
+          url: `https://www.car.gov.br/publico/imoveis/index?car=${car.car_number}`,
+          lastUpdate: new Date().toISOString().split('T')[0]
+        },
+        executionTimeMs: 0,
+        cached: false
+      };
+    } catch (err) {
+      throw new Error(`Failed to check CAR by number: ${(err as Error).message}`);
+    }
+  }
+
+  /**
+   * Check CAR by coordinates (spatial query)
+   */
+  private async checkByCoordinates(input: NormalizedInput): Promise<CheckerResult> {
     if (!input.coordinates) {
       throw new Error('Coordinates required for CAR check');
     }
@@ -179,7 +298,7 @@ export class CARChecker extends BaseChecker {
       };
 
     } catch (err) {
-      throw new Error(`Failed to check CAR: ${(err as Error).message}`);
+      throw new Error(`Failed to check CAR by coordinates: ${(err as Error).message}`);
     }
   }
 
