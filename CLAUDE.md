@@ -276,6 +276,103 @@ The API includes `/samples/*` endpoints for testing with real data:
 
 Use these for end-to-end testing without knowing actual documents.
 
+## Data Sources: Quick Reference
+
+**📖 For complete technical details, see [DATA_SOURCES.md](./DATA_SOURCES.md)**
+
+### All Data Sources at a Glance
+
+| Source | Provider | URL | Format | Auth | Status | Records | Checker | Scripts |
+|--------|----------|-----|--------|------|--------|---------|---------|---------|
+| **PRODES** | INPE/TerraBrasilis | terrabrasilis.dpi.inpe.br | WFS/GeoJSON | None | ✅ Prod | 216K | ✅ | download-prodes-complete, seed-prodes-complete |
+| **CAR** | SICAR | consultapublica.car.gov.br | Shapefile | CAPTCHA | 🔄 Partial | 3.5M+ | ❌ | process-car-shapefiles, seed-car-optimized-v2, split-large-car-files |
+| **DETER** | INPE | terrabrasilis.dpi.inpe.br | WFS | None | ✅ Prod | Daily | ✅ | download-deter, seed-deter |
+| **MapBiomas** | MapBiomas | plataforma.alerta.mapbiomas.org | GraphQL | Token | ✅ Prod | 35K | ✅ | download-mapbiomas-alerta, seed-mapbiomas-alerta |
+| **Terras Indígenas** | FUNAI | geoserver.funai.gov.br | WFS | None | ✅ Prod | - | ✅ | download-terras-indigenas, seed-terras-indigenas |
+| **Unidades Conservação** | ICMBio | geoserver.icmbio.gov.br | WFS | None | ✅ Prod | - | ✅ | download-unidades-conservacao, seed-unidades-conservacao |
+| **IBAMA Embargoes** | IBAMA | dadosabertos.ibama.gov.br | CSV | None | ✅ Prod | 66K | ✅ | data:ibama, seed-ibama-simple |
+| **Lista Suja** | MTE | gov.br/trabalho-e-emprego | Excel | None | ✅ Prod | 678 | ✅ | data:lista-suja, seed-lista-suja-simple |
+| **CGU Sanções** | CGU | api.portaldatransparencia.gov.br | REST | API Key | ✅ Prod | - | ✅ | download-cgu-sancoes, seed-cgu-sancoes |
+| **INPE Queimadas** | INPE | dataserver-coids.inpe.br | CSV | None | ✅ Prod | Daily | ✅ | download-queimadas, seed-queimadas |
+| **MAPA Orgânicos** | MAPA | gov.br/agricultura | Excel | None | ✅ Prod | - | ✅ | download-mapa-organicos, seed-mapa-organicos |
+| **ANA Outorgas** | ANA | dadosabertos.ana.gov.br | CSV | None | ✅ Prod | 48K | ✅ | download-ana-outorgas, seed-ana-outorgas |
+
+### Data Flow: From Government Source to Production API
+
+```
+┌─────────────────────┐
+│ Government Source   │  (INPE, FUNAI, IBAMA, etc.)
+│ - APIs              │
+│ - File Downloads    │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ Download Scripts    │  scripts/download-*.ts
+│ - WFS queries       │
+│ - HTTP downloads    │
+│ - API pagination    │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ Local Data Files    │  data/ directory
+│ - GeoJSON           │
+│ - CSV               │
+│ - Excel             │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ Seed Scripts        │  scripts/seed-*.ts
+│ - Parse & validate  │
+│ - Batch INSERT      │
+│ - PostGIS geometry  │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ PostgreSQL/PostGIS  │  Railway Database
+│ - Spatial indexes   │
+│ - ~6M+ records      │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ API Checkers        │  src/checkers/
+│ - Query database    │
+│ - Apply rules       │
+│ - Cache results     │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ Production API      │  defarm-check-api-production.up.railway.app
+│ - REST endpoints    │
+│ - API key auth      │
+└──────────┬──────────┘
+           │
+           ▼
+┌─────────────────────┐
+│ Client Apps         │  DeFarm, etc.
+└─────────────────────┘
+```
+
+### Worker Jobs (Automated Updates)
+
+| Job | Schedule | Source | Action |
+|-----|----------|--------|--------|
+| DETER Update | Daily 03:00 | INPE | Download yesterday's alerts |
+| PRODES Update | Monthly 1st, 05:00 | INPE | Download last 3 years (Amazônia) |
+| Lista Suja | Monthly 1st, 02:00 | MTE | Download full list |
+| IBAMA | Weekly Sunday 02:00 | IBAMA | Download embargoes |
+| Spatial Data | Monthly 1st, 04:00 | FUNAI/ICMBio | Indigenous lands + conservation units |
+| Data Health Check | Daily 08:00 | Internal | Check data freshness, alert if stale |
+
+All jobs send Telegram notifications on start/success/failure.
+
+---
+
 ## Data Sources: Implementation Guide & Learnings
 
 This section documents detailed learnings from implementing each data source, including challenges faced and solutions discovered.
