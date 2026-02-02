@@ -50,7 +50,7 @@ export class CARChecker extends BaseChecker {
     category: CheckerCategory.ENVIRONMENTAL,
     description: 'Verifica se propriedade possui CAR (Cadastro Ambiental Rural) válido',
     priority: 8,
-    supportedInputTypes: [InputType.CAR, InputType.COORDINATES]
+    supportedInputTypes: [InputType.CAR, InputType.COORDINATES, InputType.ADDRESS]
   };
 
   readonly config: CheckerConfig = {

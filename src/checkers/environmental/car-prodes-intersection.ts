@@ -50,7 +50,7 @@ export class CarProdesIntersectionChecker extends BaseChecker {
     category: CheckerCategory.ENVIRONMENTAL,
     description: 'Verifica desmatamento PRODES em propriedades CAR através de intersecção espacial',
     priority: 10,
-    supportedInputTypes: [InputType.CAR, InputType.COORDINATES]
+    supportedInputTypes: [InputType.CAR, InputType.COORDINATES, InputType.ADDRESS]
   };
 
   readonly config: CheckerConfig = {

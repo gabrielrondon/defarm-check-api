@@ -33,7 +33,7 @@ export class DeterAlertChecker extends BaseChecker {
     category: CheckerCategory.ENVIRONMENTAL,
     description: 'Verifica alertas de desmatamento em tempo real do INPE DETER-B (últimos 90 dias)',
     priority: 9,
-    supportedInputTypes: [InputType.COORDINATES]
+    supportedInputTypes: [InputType.COORDINATES, InputType.ADDRESS]
   };
 
   readonly config: CheckerConfig = {

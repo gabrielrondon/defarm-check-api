@@ -19,7 +19,7 @@ export class IbamaEmbargoesChecker extends BaseChecker {
     category: CheckerCategory.ENVIRONMENTAL,
     description: 'Verifica embargos ambientais do IBAMA por CPF/CNPJ ou coordenadas',
     priority: 9,
-    supportedInputTypes: [InputType.CNPJ, InputType.CPF, InputType.COORDINATES]
+    supportedInputTypes: [InputType.CNPJ, InputType.CPF, InputType.COORDINATES, InputType.ADDRESS]
   };
 
   readonly config: CheckerConfig = {

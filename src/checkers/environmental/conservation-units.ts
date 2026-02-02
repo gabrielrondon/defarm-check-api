@@ -36,7 +36,7 @@ export class ConservationUnitChecker extends BaseChecker {
     category: CheckerCategory.ENVIRONMENTAL,
     description: 'Verifica se coordenadas sobrepõem Unidades de Conservação (ICMBio)',
     priority: 9,
-    supportedInputTypes: [InputType.COORDINATES]
+    supportedInputTypes: [InputType.COORDINATES, InputType.ADDRESS]
   };
 
   readonly config: CheckerConfig = {

@@ -18,7 +18,7 @@ export class DeforestationChecker extends BaseChecker {
     category: CheckerCategory.ENVIRONMENTAL,
     description: 'Verifica desmatamento através de dados PRODES/DETER (INPE)',
     priority: 10,
-    supportedInputTypes: [InputType.COORDINATES]
+    supportedInputTypes: [InputType.COORDINATES, InputType.ADDRESS]
   };
 
   readonly config: CheckerConfig = {

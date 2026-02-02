@@ -35,7 +35,7 @@ export class IndigenousLandChecker extends BaseChecker {
     category: CheckerCategory.ENVIRONMENTAL,
     description: 'Verifica se coordenadas sobrepõem Terras Indígenas demarcadas (FUNAI)',
     priority: 10,
-    supportedInputTypes: [InputType.COORDINATES]
+    supportedInputTypes: [InputType.COORDINATES, InputType.ADDRESS]
   };
 
   readonly config: CheckerConfig = {
