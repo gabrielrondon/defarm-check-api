@@ -13,6 +13,8 @@ import {
   generateSummary,
   calculateCacheHitRate
 } from './verdict.js';
+import { geocodingService } from './geocoding.js';
+import { InputType } from '../types/input.js';
 
 export class OrchestratorService {
   // Executa check completo
@@ -23,8 +25,8 @@ export class OrchestratorService {
     logger.info({ checkId, input: request.input }, 'Starting check');
 
     try {
-      // 1. Normalizar input
-      const normalizedInput = this.normalizeInput(request.input);
+      // 1. Normalizar input (geocode address if needed)
+      const normalizedInput = await this.normalizeInput(request.input);
 
       // 2. Selecionar checkers
       const checkers = this.selectCheckers(normalizedInput, request.options?.sources);
@@ -88,7 +90,47 @@ export class OrchestratorService {
   }
 
   // Normaliza input
-  private normalizeInput(input: any): NormalizedInput {
+  private async normalizeInput(input: any): Promise<NormalizedInput> {
+    // Handle ADDRESS type - geocode to coordinates
+    if (input.type === InputType.ADDRESS) {
+      const address = String(input.value);
+      logger.debug({ address }, 'Geocoding address');
+
+      try {
+        const geocoded = await geocodingService.geocode(address);
+
+        const normalized: NormalizedInput = {
+          type: InputType.COORDINATES, // Convert to COORDINATES for checkers
+          value: `${geocoded.coordinates.lat},${geocoded.coordinates.lon}`,
+          originalValue: address,
+          coordinates: geocoded.coordinates,
+          metadata: {
+            originalType: InputType.ADDRESS,
+            geocodingResult: geocoded,
+            address: geocoded.displayName
+          }
+        };
+
+        logger.info(
+          {
+            address,
+            coordinates: geocoded.coordinates,
+            source: geocoded.source
+          },
+          'Address geocoded successfully'
+        );
+
+        return normalized;
+      } catch (err) {
+        logger.error(
+          { address, error: (err as Error).message },
+          'Failed to geocode address'
+        );
+        throw new Error(`Failed to geocode address "${address}": ${(err as Error).message}`);
+      }
+    }
+
+    // Handle other input types
     const normalized: NormalizedInput = {
       type: input.type,
       value: normalizeInput(input.type, input.value),
@@ -96,7 +138,7 @@ export class OrchestratorService {
     };
 
     // Se for coordenadas, salvar objeto também
-    if (input.type === 'COORDINATES' && typeof input.value === 'object') {
+    if (input.type === InputType.COORDINATES && typeof input.value === 'object') {
       normalized.coordinates = input.value;
     }
 

@@ -37,5 +37,12 @@ export const config = {
 
   api: {
     version: '1.0.0'
+  },
+
+  geocoding: {
+    provider: process.env.GEOCODING_PROVIDER || 'nominatim', // 'nominatim' or 'google'
+    googleApiKey: process.env.GOOGLE_MAPS_API_KEY, // Optional, for Google Maps fallback
+    cacheTTL: parseInt(process.env.GEOCODING_CACHE_TTL || '31536000', 10), // 1 year
+    rateLimit: parseInt(process.env.GEOCODING_RATE_LIMIT || '1', 10) // requests per second
   }
 };
