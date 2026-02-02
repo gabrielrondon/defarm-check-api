@@ -610,12 +610,25 @@ paths:
         - samples
       summary: Get one sample from each data source
       description: |
-        Retorna um exemplo de cada fonte de dados disponível.
+        Retorna um exemplo de cada fonte de dados disponível (overview completo).
 
-        Útil para:
+        **Útil para:**
         - Overview rápido de todas as fontes
-        - Testes end-to-end
+        - Testes end-to-end da API
         - Demos para clientes
+        - Verificar quais fontes estão populadas
+
+        **Fontes incluídas:**
+        - `listaSuja`: CPF/CNPJ na Lista Suja do Trabalho Escravo
+        - `ibama`: CPF/CNPJ com embargos IBAMA
+        - `terrasIndigenas`: Coordenadas dentro de Terras Indígenas
+        - `unidadesConservacao`: Coordenadas dentro de UCs (pode ser null se API offline)
+        - `deter`: Alertas DETER recentes (pode ser null se API offline)
+        - `car`: CAR com status irregular (CA/SU/PE)
+        - `prodes`: Coordenadas com desmatamento PRODES
+
+        **Nota:** Alguns campos podem ser `null` se as APIs governamentais estiverem
+        temporariamente indisponíveis (não bloqueante - checkers tratam isso retornando PASS).
 
         Cada exemplo inclui um `testUrl` pronto para usar no endpoint `/check`.
       operationId: getSamplesAll
@@ -654,11 +667,19 @@ paths:
     get:
       tags:
         - samples
-      summary: Get samples from Lista Suja
+      summary: Get samples from Lista Suja do Trabalho Escravo
       description: |
-        Retorna 10 exemplos aleatórios de CPF/CNPJ presentes na Lista Suja do Trabalho Escravo.
+        Retorna 10 exemplos aleatórios de CPF/CNPJ presentes na Lista Suja do Trabalho Escravo (MTE).
 
-        Use estes exemplos para testar se a API realmente detecta trabalho escravo.
+        **Dados:** 664 registros de empregadores flagrados com trabalho escravo ou análogo.
+
+        **Input types suportados:** CPF, CNPJ
+
+        **Uso:**
+        Use os documentos retornados (`document` field) para testar o endpoint `/check`
+        e verificar que a API realmente detecta trabalho escravo (status: FAIL, severity: CRITICAL).
+
+        **Response:** Cada sample inclui documento, nome, estado, ano da infração e trabalhadores afetados.
       operationId: getSamplesListaSuja
       security: []
       responses:
@@ -699,11 +720,19 @@ paths:
     get:
       tags:
         - samples
-      summary: Get samples from IBAMA Embargoes
+      summary: Get samples from IBAMA Environmental Embargoes
       description: |
         Retorna 10 exemplos aleatórios de CPF/CNPJ com embargos ambientais do IBAMA.
 
-        Use estes exemplos para testar detecção de embargos.
+        **Dados:** 122,814 documentos agregados com embargos ambientais.
+
+        **Input types suportados:** CPF, CNPJ, COORDINATES (buffer 5km)
+
+        **Uso:**
+        Use os documentos retornados para testar detecção de embargos IBAMA.
+        API retorna FAIL quando embargo_count > 0.
+
+        **Response:** Cada sample inclui documento, nome, número de embargos e área total embargada (hectares).
       operationId: getSamplesIbama
       security: []
       responses:
@@ -727,11 +756,20 @@ paths:
     get:
       tags:
         - samples
-      summary: Get samples from Indigenous Lands
+      summary: Get samples from Indigenous Lands (Terras Indígenas)
       description: |
-        Retorna 10 coordenadas aleatórias dentro de Terras Indígenas demarcadas.
+        Retorna 10 coordenadas aleatórias dentro de Terras Indígenas demarcadas (FUNAI).
 
-        Use estas coordenadas para testar detecção de sobreposição com TIs.
+        **Dados:** 649 territórios indígenas com geometrias PostGIS.
+
+        **Input types suportados:** COORDINATES, ADDRESS (via geocoding)
+
+        **Uso:**
+        Use as coordenadas retornadas (centróide de cada TI) para testar o endpoint `/check`.
+        API retorna FAIL (severity: CRITICAL) quando coordenadas caem dentro de Terra Indígena.
+
+        **Response:** Cada sample inclui nome da TI, etnia, fase de regularização, área (ha),
+        município, estado e coordenadas do centróide.
       operationId: getSamplesTerrasIndigenas
       security: []
       responses:
@@ -755,11 +793,25 @@ paths:
     get:
       tags:
         - samples
-      summary: Get samples from Conservation Units
+      summary: Get samples from Conservation Units (Unidades de Conservação)
       description: |
-        Retorna 10 coordenadas aleatórias dentro de Unidades de Conservação.
+        Retorna até 10 coordenadas aleatórias dentro de Unidades de Conservação (ICMBio).
 
-        Use estas coordenadas para testar detecção de sobreposição com UCs.
+        **Dados:** Federais, estaduais e municipais (quando disponível).
+
+        **Input types suportados:** COORDINATES, ADDRESS (via geocoding)
+
+        **Uso:**
+        Use as coordenadas retornadas (centróide de cada UC) para testar o endpoint `/check`.
+        API retorna FAIL quando coordenadas caem dentro de UC de proteção integral.
+
+        **⚠️ Nota importante:**
+        Se `count: 0`, significa que a API ICMBio está temporariamente indisponível.
+        Neste caso, o endpoint retorna um `message` explicativo. Isso é esperado e
+        não bloqueante - o checker retorna PASS quando não há dados disponíveis.
+
+        **Response:** Cada sample inclui nome da UC, categoria, grupo, área (ha),
+        município, estado, esfera administrativa e coordenadas do centróide.
       operationId: getSamplesUnidadesConservacao
       security: []
       responses:
@@ -774,11 +826,25 @@ paths:
     get:
       tags:
         - samples
-      summary: Get samples from DETER alerts
+      summary: Get samples from DETER Real-Time Alerts
       description: |
-        Retorna 10 coordenadas aleatórias com alertas DETER recentes (últimos 90 dias).
+        Retorna até 10 coordenadas aleatórias com alertas DETER recentes (últimos 90 dias).
 
-        Use estas coordenadas para testar detecção de desmatamento em tempo real.
+        **Dados:** Alertas de desmatamento em tempo real do INPE/TerraBrasilis.
+
+        **Input types suportados:** COORDINATES, ADDRESS (via geocoding)
+
+        **Uso:**
+        Use as coordenadas retornadas (centróide de cada alerta) para testar o endpoint `/check`.
+        API retorna FAIL quando coordenadas caem próximas a alertas DETER recentes.
+
+        **⚠️ Nota importante:**
+        Se `count: 0`, significa que a API INPE/TerraBrasilis está temporariamente indisponível.
+        Neste caso, o endpoint retorna um `message` explicativo. Isso é esperado e
+        não bloqueante - o checker retorna PASS quando não há dados disponíveis.
+
+        **Response:** Cada sample inclui data do alerta, área (ha), município, estado,
+        classificação, sensor e coordenadas do centróide.
       operationId: getSamplesDeter
       security: []
       responses:
@@ -793,30 +859,73 @@ paths:
     get:
       tags:
         - samples
-      summary: Get samples from CAR with irregular status
+      summary: Get CAR registrations with irregular status
       description: |
-        Retorna 10 coordenadas aleatórias com CAR cancelado, suspenso ou pendente.
+        Retorna até 10 registros CAR (Cadastro Ambiental Rural) com status irregular.
 
-        Use estas coordenadas para testar detecção de irregularidades no CAR.
+        **Dados:** 8,096,127 registros CAR de 27 estados brasileiros (SICAR).
+
+        **Input types suportados:** CAR (código completo), COORDINATES, ADDRESS (via geocoding)
+
+        **Status Codes SICAR:**
+        - `CA` (CANCELADO): Registro cancelado
+        - `SU` (SUSPENSO): Registro suspenso por irregularidades
+        - `PE` (PENDENTE): Registro pendente de validação
+
+        **Uso:**
+        Use o `carNumber` retornado para testar o endpoint `/check` com input type CAR.
+        Também retorna coordenadas do centróide para testes espaciais.
+        API retorna FAIL quando CAR está cancelado ou suspenso.
+
+        **⚠️ Fix aplicado (2026-02-02):**
+        Query SQL corrigido para usar códigos SICAR (CA/SU/PE) ao invés de nomes completos.
+        Adicionado campo `statusDescription` para mapear códigos → nomes legíveis.
+
+        **Response:** Cada sample inclui carNumber, status (código), statusDescription (legível),
+        área (ha), município, estado e coordenadas do centróide.
+
+        Se `count: 0`, significa que não há CARs com status irregular no momento
+        (ou dados em processamento). Neste caso retorna `message` explicativo.
       operationId: getSamplesCar
       security: []
       responses:
         '200':
-          description: 10 samples retornados
+          description: Lista de CAR samples com status irregular (ou mensagem explicativa se vazio)
           content:
             application/json:
               schema:
-                type: object
+                allOf:
+                  - $ref: '#/components/schemas/SampleResponse'
+                  - type: object
+                    properties:
+                      samples:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/CARSample'
 
   /samples/prodes:
     get:
       tags:
         - samples
-      summary: Get samples from PRODES deforestation
+      summary: Get samples from PRODES Deforestation
       description: |
-        Retorna 10 coordenadas aleatórias com desmatamento detectado pelo PRODES.
+        Retorna 10 coordenadas aleatórias com desmatamento histórico detectado pelo PRODES.
 
-        Use estas coordenadas para testar detecção de desmatamento histórico.
+        **Dados:** 216,252 polígonos de desmatamento de todos os 6 biomas brasileiros (INPE).
+
+        **Input types suportados:** COORDINATES, ADDRESS (via geocoding)
+
+        **Biomas cobertos:**
+        - Amazônia Legal (2015-2024)
+        - Cerrado, Caatinga, Mata Atlântica, Pampa, Pantanal
+
+        **Uso:**
+        Use as coordenadas retornadas (centróide de cada polígono) para testar o endpoint `/check`.
+        API retorna FAIL quando coordenadas caem dentro de polígono de desmatamento.
+        Severity baseada na área e ano do desmatamento.
+
+        **Response:** Cada sample inclui ano do desmatamento, área (ha), município, estado,
+        path/row (referência satélite) e coordenadas do centróide.
       operationId: getSamplesProdes
       security: []
       responses:
@@ -1171,6 +1280,98 @@ components:
                 - ok
                 - down
               description: Status do Redis (cache)
+
+    SampleResponse:
+      type: object
+      description: Response padrão para endpoints /samples/*
+      required:
+        - source
+        - count
+        - samples
+      properties:
+        source:
+          type: string
+          description: Nome da fonte de dados
+          example: "CAR - Cadastro Ambiental Rural (SICAR)"
+        count:
+          type: integer
+          description: Número de samples retornados (0-10)
+          minimum: 0
+          maximum: 10
+          example: 10
+        message:
+          type: string
+          nullable: true
+          description: |
+            Mensagem explicativa quando count=0.
+            Indica que APIs governamentais estão offline (não bloqueante).
+          example: "Dados em processamento. API temporariamente indisponível."
+        samples:
+          type: array
+          description: Lista de samples (vazio se count=0)
+          items:
+            type: object
+
+    CARSample:
+      type: object
+      description: Sample de registro CAR com status irregular
+      required:
+        - carNumber
+        - status
+        - statusDescription
+        - areaHa
+        - municipality
+        - state
+        - coordinates
+        - testUrl
+      properties:
+        carNumber:
+          type: string
+          description: Código único do registro CAR (formato UF-MUNICÍPIO-CÓDIGO)
+          example: "PR-4111506-1B80A47993684BEE9908ED4468199BF8"
+        status:
+          type: string
+          enum: [CA, SU, PE, AT]
+          description: Código de status SICAR
+          example: "CA"
+        statusDescription:
+          type: string
+          enum: [CANCELADO, SUSPENSO, PENDENTE, ATIVO]
+          description: Descrição legível do status
+          example: "CANCELADO"
+        areaHa:
+          type: integer
+          description: Área do imóvel em hectares
+          example: 150
+        municipality:
+          type: string
+          description: Município do imóvel
+          example: "Ivaipora"
+        state:
+          type: string
+          description: Sigla do estado (UF)
+          example: "PR"
+        coordinates:
+          type: object
+          description: Coordenadas do centróide da propriedade
+          required:
+            - lat
+            - lon
+          properties:
+            lat:
+              type: number
+              format: float
+              description: Latitude (WGS84)
+              example: -24.33476771879231
+            lon:
+              type: number
+              format: float
+              description: Longitude (WGS84)
+              example: -51.587721288619306
+        testUrl:
+          type: string
+          description: URL de exemplo para testar no endpoint /check
+          example: 'POST /check {"input":{"type":"CAR","value":"PR-4111506-..."}}'
 
     Error:
       type: object
