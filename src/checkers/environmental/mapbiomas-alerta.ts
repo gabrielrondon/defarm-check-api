@@ -31,7 +31,7 @@ export class MapBiomasAlertaChecker extends BaseChecker {
     category: CheckerCategory.ENVIRONMENTAL,
     description: 'Verifica desmatamento validado por analistas (MapBiomas Alerta)',
     priority: 9, // Higher priority than DETER (validated data)
-    supportedInputTypes: [InputType.COORDINATES, InputType.CAR]
+    supportedInputTypes: [InputType.COORDINATES, InputType.CAR, InputType.ADDRESS]
   };
 
   readonly config: CheckerConfig = {

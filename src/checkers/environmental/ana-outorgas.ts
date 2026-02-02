@@ -23,7 +23,7 @@ export class AnaOutorgasChecker extends BaseChecker {
     category: CheckerCategory.ENVIRONMENTAL,
     description: 'Verifica autorizações de uso de recursos hídricos (outorgas) em rios federais (ANA)',
     priority: 6, // Lower priority - coordinate-based only
-    supportedInputTypes: [InputType.COORDINATES, InputType.CAR]
+    supportedInputTypes: [InputType.COORDINATES, InputType.CAR, InputType.ADDRESS]
   };
 
   readonly config: CheckerConfig = {

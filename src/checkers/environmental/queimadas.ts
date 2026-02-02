@@ -22,7 +22,7 @@ export class QueimadasChecker extends BaseChecker {
     description: 'Verifica focos de calor/queimadas detectados por satélites (INPE)',
     dataSource: 'INPE - Programa Queimadas',
     priority: 8, // Alta prioridade - indicador em tempo real
-    supportedInputTypes: [InputType.COORDINATES, InputType.CAR]
+    supportedInputTypes: [InputType.COORDINATES, InputType.CAR, InputType.ADDRESS]
   };
 
   config = {
