@@ -186,6 +186,9 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
     return {
       source: 'Unidades de Conservação (ICMBio)',
       count: result.rows.length,
+      message: result.rows.length === 0
+        ? 'Dados de Unidades de Conservação em processamento. API ICMBio temporariamente indisponível.'
+        : undefined,
       samples: result.rows.map((r: any) => ({
         name: r.name,
         category: r.category,
@@ -228,6 +231,9 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
     return {
       source: 'DETER Real-Time Alerts (INPE)',
       count: result.rows.length,
+      message: result.rows.length === 0
+        ? 'Dados DETER em processamento. API INPE/TerraBrasilis temporariamente indisponível.'
+        : undefined,
       samples: result.rows.map((r: any) => ({
         alertDate: r.alert_date,
         areaHa: r.area_ha,
@@ -247,40 +253,48 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
   /**
    * GET /samples/car
    * Retorna coordenadas com CAR cancelado/suspenso
+   * Status codes: CA (Cancelado), SU (Suspenso), PE (Pendente), AT (Ativo)
    */
   fastify.get('/samples/car', async (request, reply) => {
     const result = await db.execute(sql`
       SELECT
         car_number,
         status,
-        owner_name,
-        property_name,
         area_ha,
         municipality,
         state,
         ST_Y(ST_Centroid(geometry)) as lat,
         ST_X(ST_Centroid(geometry)) as lon
       FROM car_registrations
-      WHERE status IN ('CANCELADO', 'SUSPENSO', 'PENDENTE')
+      WHERE status IN ('CA', 'SU', 'PE')
         AND geometry IS NOT NULL
       ORDER BY
         CASE
-          WHEN status = 'CANCELADO' THEN 1
-          WHEN status = 'SUSPENSO' THEN 2
+          WHEN status = 'CA' THEN 1
+          WHEN status = 'SU' THEN 2
           ELSE 3
         END,
         RANDOM()
       LIMIT 10
     `);
 
+    const statusMap: Record<string, string> = {
+      'CA': 'CANCELADO',
+      'SU': 'SUSPENSO',
+      'PE': 'PENDENTE',
+      'AT': 'ATIVO'
+    };
+
     return {
       source: 'CAR - Cadastro Ambiental Rural (SICAR)',
       count: result.rows.length,
+      message: result.rows.length === 0
+        ? 'Nenhum CAR com status irregular encontrado. Dados em processamento ou todos registros estão ativos.'
+        : undefined,
       samples: result.rows.map((r: any) => ({
         carNumber: r.car_number,
         status: r.status,
-        ownerName: r.owner_name,
-        propertyName: r.property_name,
+        statusDescription: statusMap[r.status] || r.status,
         areaHa: r.area_ha,
         municipality: r.municipality,
         state: r.state,
@@ -288,7 +302,7 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
           lat: parseFloat(r.lat),
           lon: parseFloat(r.lon)
         },
-        testUrl: `POST /check {"input":{"type":"COORDINATES","value":{"lat":${parseFloat(r.lat)},"lon":${parseFloat(r.lon)}}}}`
+        testUrl: `POST /check {"input":{"type":"CAR","value":"${r.car_number}"}}`
       }))
     };
   });
@@ -400,7 +414,7 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
         ST_Y(ST_Centroid(geometry)) as lat,
         ST_X(ST_Centroid(geometry)) as lon
       FROM car_registrations
-      WHERE status IN ('CANCELADO', 'SUSPENSO')
+      WHERE status IN ('CA', 'SU', 'PE')
         AND geometry IS NOT NULL
       ORDER BY RANDOM()
       LIMIT 1
