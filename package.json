@@ -37,6 +37,7 @@
     "seed:car-large": "NODE_OPTIONS='--max-old-space-size=8192' tsx scripts/seed-car-optimized-v2.ts",
     "process:car": "tsx scripts/process-car-shapefiles.ts",
     "split:car": "tsx scripts/split-large-car-files.ts",
+    "split:car:fast": "bash scripts/split-car-fast.sh",
     "data:cgu-sancoes": "tsx scripts/download-cgu-sancoes.ts",
     "seed:cgu-sancoes": "tsx scripts/seed-cgu-sancoes.ts",
     "data:queimadas": "tsx scripts/download-queimadas.ts",
