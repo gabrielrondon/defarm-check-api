@@ -60,6 +60,71 @@ curl -X POST https://defarm-check-api-production.up.railway.app/check \
 }
 ```
 
+## 🌍 Universal Spatial Input (Novo!)
+
+**Consulte qualquer dado espacial por localização!**
+
+Todos os checkers espaciais (10 no total) agora aceitam **3 formatos de input**:
+
+### 1. Por Endereço 🆕
+```bash
+curl -X POST https://defarm-check-api-production.up.railway.app/check \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: SUA_API_KEY" \
+  -d '{
+    "input": {
+      "type": "ADDRESS",
+      "value": "Altamira, Pará"
+    }
+  }'
+```
+→ Geocodifica automaticamente → Retorna CAR, PRODES, IBAMA, DETER, etc.
+
+### 2. Por Coordenadas GPS
+```bash
+curl -X POST https://defarm-check-api-production.up.railway.app/check \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: SUA_API_KEY" \
+  -d '{
+    "input": {
+      "type": "COORDINATES",
+      "value": {"lat": -3.204, "lon": -52.210}
+    }
+  }'
+```
+→ Busca espacial direta → Todos os checkers geoespaciais
+
+### 3. Por Número CAR
+```bash
+curl -X POST https://defarm-check-api-production.up.railway.app/check \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: SUA_API_KEY" \
+  -d '{
+    "input": {
+      "type": "CAR",
+      "value": "BA-2909703-F05433B5497742CB8FB37AE31C2C4463"
+    }
+  }'
+```
+→ Propriedade específica → Status CAR + Desmatamento + Embargos
+
+**Checkers Espaciais que respondem a estes inputs:**
+- ✅ CAR x PRODES Intersection
+- ✅ CAR - Cadastro Ambiental Rural
+- ✅ IBAMA Embargoes (busca 5km)
+- ✅ PRODES Deforestation
+- ✅ DETER Real-Time Alerts
+- ✅ MapBiomas Validated Deforestation
+- ✅ Indigenous Lands
+- ✅ Conservation Units
+- ✅ INPE Fire Hotspots
+- ✅ ANA Water Use Permits
+
+**Performance:**
+- Primeira consulta de endereço: ~1-2s (geocodificação)
+- Consultas subsequentes: <100ms (cache Redis)
+- Coordenadas diretas: ~200-500ms
+
 ## 🔑 Autenticação
 
 Todas as requisições requerem uma API key no header:
@@ -79,7 +144,7 @@ Executa verificação de compliance
 ```json
 {
   "input": {
-    "type": "CNPJ|CPF|CAR|COORDINATES",
+    "type": "CNPJ|CPF|CAR|COORDINATES|ADDRESS",
     "value": "..."
   },
   "options": {
@@ -92,8 +157,9 @@ Executa verificação de compliance
 **Tipos de Input:**
 - `CNPJ` - CNPJ (com ou sem máscara): `"12345678000190"` ou `"12.345.678/0001-90"`
 - `CPF` - CPF (com ou sem máscara): `"12345678900"` ou `"123.456.789-00"`
-- `CAR` - Número CAR
-- `COORDINATES` - Coordenadas: `{"lat": -7.094, "lon": -61.090}`
+- `CAR` - Número CAR: `"BA-2909703-F05433B5497742CB8FB37AE31C2C4463"`
+- `COORDINATES` - Coordenadas GPS: `{"lat": -7.094, "lon": -61.090}`
+- `ADDRESS` - Endereço (geocodificado automaticamente): `"Altamira, Pará"` 🆕
 
 **Response:**
 ```typescript
