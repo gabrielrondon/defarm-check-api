@@ -62,17 +62,90 @@ paths:
         - **COORDINATES**: Coordenadas GPS (lat/lon em decimal WGS84)
         - **ADDRESS**: Endereço brasileiro em texto livre (geocodificado automaticamente)
 
-        **Geocoding (ADDRESS):**
+        ---
+
+        ## 🔍 Checkers Executados Automaticamente
+
+        A API executa até **13 checkers** em paralelo, dependendo do tipo de input:
+
+        ### Social & Legal (CNPJ/CPF)
+        - **Slave Labor Registry**: Lista Suja do Trabalho Escravo (MTE)
+        - **CGU Sanctions**: Sanções federais (CEIS, CNEP, CEAF)
+
+        ### Environmental - Document-based (CNPJ/CPF)
+        - **IBAMA Embargoes**: Embargos ambientais por documento
+
+        ### Environmental - CAR-based
+        - **CAR Registry**: Status do CAR (ativo/cancelado/suspenso)
+        - **🔄 CAR x PRODES Intersection**: Cruza geometria do CAR com polígonos PRODES para detectar desmatamento DENTRO da propriedade ⭐
+        - **MapBiomas Validated Deforestation**: Desmatamento validado por analistas dentro do CAR
+        - **INPE Fire Hotspots**: Focos de calor/queimadas dentro do CAR (últimos 90 dias)
+        - **ANA Water Use Permits**: Outorgas de uso de água próximas ao CAR
+
+        ### Environmental - Spatial (COORDINATES/ADDRESS)
+        - **PRODES Deforestation**: Verifica se coordenadas caem em polígono de desmatamento histórico
+        - **DETER Real-Time Alerts**: Alertas de desmatamento em tempo real (últimos 90 dias)
+        - **Indigenous Lands**: Verifica sobreposição com Terras Indígenas (FUNAI)
+        - **Conservation Units**: Verifica sobreposição com UCs (ICMBio)
+        - **IBAMA Embargoes (Spatial)**: Embargos em buffer de 5km das coordenadas
+        - **MapBiomas Validated Deforestation**: Desmatamento validado próximo às coordenadas
+        - **INPE Fire Hotspots**: Focos de calor próximos às coordenadas
+        - **ANA Water Use Permits**: Outorgas próximas às coordenadas
+
+        ### Positive/Certification (CNPJ)
+        - **MAPA Organic Certification**: Certificação orgânica (quando disponível)
+
+        ---
+
+        ## 🔄 Intersecções Espaciais (Spatial Crosses)
+
+        **O que são?** Alguns checkers fazem intersecções geométricas (PostGIS) para detectar problemas dentro de áreas:
+
+        1. **CAR x PRODES Intersection** ⭐ (Mais importante)
+           - Input: CAR number
+           - Cruza: Geometria do CAR (propriedade) com polígonos PRODES (desmatamento)
+           - Retorna: Área desmatada dentro da propriedade, anos, número de polígonos
+           - Severity: CRITICAL se desmatamento recente (≤2 anos) ou área grande (≥100 ha)
+
+        2. **CAR x MapBiomas Alerta**
+           - Input: CAR number
+           - Cruza: Geometria do CAR com alertas validados MapBiomas
+           - Retorna: Alertas de desmatamento dentro da propriedade
+
+        3. **CAR x Queimadas**
+           - Input: CAR number
+           - Cruza: Geometria do CAR com focos de calor (últimos 90 dias)
+           - Retorna: Número de focos dentro da propriedade
+
+        4. **CAR x ANA Outorgas**
+           - Input: CAR number
+           - Cruza: Geometria do CAR com pontos de outorga
+           - Retorna: Outorgas dentro ou próximas à propriedade
+
+        5. **COORDINATES x PRODES/TIs/UCs/etc**
+           - Input: COORDINATES ou ADDRESS (geocoded)
+           - Verifica: Se ponto cai dentro de polígonos de restrição
+
+        **Tecnologia:** PostGIS `ST_Intersects()`, `ST_Contains()`, `ST_Within()`
+
+        ---
+
+        ## 🌍 Geocoding (ADDRESS)
+
         - Endereços são convertidos automaticamente para coordenadas
         - Provider: OpenStreetMap Nominatim (gratuito)
         - Suporta abreviações de estado (PA → Pará, SP → São Paulo, etc.)
         - Cache de 1 ano (requisições subsequentes: <100ms)
         - Rate limit: 1 req/s para geocoding (Nominatim policy)
 
-        **Performance:**
+        ---
+
+        ## ⚡ Performance
+
         - Primeira requisição: ~200ms (CNPJ/CPF/CAR), ~1-2s (ADDRESS c/ geocoding)
         - Com cache: ~10ms (checkers), ~100ms (ADDRESS cached)
         - Cache TTL: 7 dias (checkers), 1 ano (geocoding)
+        - **Checkers executam em paralelo** (não sequencial)
 
         **Rate limit:** 10,000 requisições/minuto por API key
       operationId: executeCheck
@@ -433,14 +506,20 @@ paths:
     get:
       tags:
         - sources
-      summary: List all data sources
+      summary: List all data sources and checkers
       description: |
         Lista todas as fontes de dados (checkers) disponíveis na API.
 
-        Útil para:
+        **Total:** 13 checkers ativos (social, legal, environmental, certification)
+
+        **Útil para:**
         - Descobrir quais checkers estão ativos
         - Verificar status operacional de cada fonte
         - Entender categorias disponíveis
+        - Ver quais input types cada checker suporta
+
+        **Nota:** Alguns checkers fazem intersecções espaciais (spatial crosses) usando PostGIS.
+        Exemplo: "CAR x PRODES Intersection" cruza geometria do CAR com polígonos PRODES.
       operationId: listSources
       security:
         - ApiKeyAuth: []
@@ -489,6 +568,26 @@ paths:
                   enabled: true
                   status: "operational"
                   description: "Verifica regularização ambiental via CAR - Cobertura nacional 27 estados (SICAR)"
+                - name: "CAR x PRODES Intersection"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Cruza geometria do CAR com polígonos PRODES para detectar desmatamento dentro da propriedade (intersecção espacial PostGIS)"
+                - name: "MapBiomas Validated Deforestation"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Desmatamento validado por analistas (MapBiomas Alerta) - suporta CAR e coordenadas"
+                - name: "INPE Fire Hotspots"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Focos de calor/queimadas detectados por satélites (últimos 90 dias) - suporta CAR e coordenadas"
+                - name: "ANA Water Use Permits"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Outorgas de uso de recursos hídricos (ANA) - suporta CAR e coordenadas"
 
   /sources/{category}:
     get:
