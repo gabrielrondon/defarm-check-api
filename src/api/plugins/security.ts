@@ -5,10 +5,35 @@ import rateLimit from '@fastify/rate-limit';
 import { config } from '../../config/index.js';
 
 export async function securityPlugin(app: FastifyInstance) {
-  // CORS
+  // CORS - Allow specific domains in production
   await app.register(cors, {
-    origin: config.env === 'production' ? false : true,
-    credentials: true
+    origin: (origin, cb) => {
+      // Allow requests with no origin (e.g., mobile apps, Postman)
+      if (!origin) {
+        cb(null, true);
+        return;
+      }
+
+      // Allowed domains (wildcards supported via regex)
+      const allowedDomains = [
+        /^https:\/\/.*\.lovableproject\.com$/,
+        /^https:\/\/.*\.lovable\.app$/,
+        /^http:\/\/localhost(:\d+)?$/,
+        /^https:\/\/defarm-check-api-production\.up\.railway\.app$/
+      ];
+
+      // Check if origin matches any allowed domain
+      const isAllowed = allowedDomains.some(domain => domain.test(origin));
+
+      if (isAllowed) {
+        cb(null, true);
+      } else {
+        cb(new Error('Not allowed by CORS'), false);
+      }
+    },
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'X-API-Key', 'Authorization'],
+    exposedHeaders: ['X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset']
   });
 
   // Security headers
