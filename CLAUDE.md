@@ -273,8 +273,49 @@ The API includes `/samples/*` endpoints for testing with real data:
 - `/samples/lista-suja` - Returns CNPJ/CPF that exists in Lista Suja
 - `/samples/ibama` - Returns CNPJ/CPF with IBAMA embargoes
 - `/samples/prodes` - Returns coordinates with deforestation
+- `/samples/car` - Returns sample CAR numbers with various statuses
 
 Use these for end-to-end testing without knowing actual documents.
+
+## CAR Geometry Endpoints
+
+The API provides dedicated endpoints for querying CAR (Cadastro Ambiental Rural) polygon geometries:
+
+```bash
+# Get CAR with geometry
+GET /car/:carNumber
+
+# Get CAR as GeoJSON Feature (ready for mapping)
+GET /car/:carNumber/geojson
+
+# Batch query multiple CARs
+POST /car/batch
+```
+
+**Examples:**
+```bash
+# Get CAR metadata and polygon
+curl http://localhost:3000/car/AC-1200013-XXXXXXXX
+
+# Get CAR without geometry (metadata only)
+curl "http://localhost:3000/car/AC-1200013-XXXXXXXX?includeGeometry=false"
+
+# Get as GeoJSON Feature for direct map rendering
+curl http://localhost:3000/car/AC-1200013-XXXXXXXX/geojson
+
+# Batch query multiple CARs
+curl -X POST http://localhost:3000/car/batch \
+  -H "Content-Type: application/json" \
+  -d '{"carNumbers": ["AC-1200013-X", "MT-5100048-Y"], "includeGeometry": false}'
+```
+
+**Use Cases:**
+- Display CAR property boundaries on maps
+- Export CAR geometries for GIS analysis
+- Verify property ownership and status
+- Build property management dashboards
+
+See `docs/CAR_ENDPOINTS.md` for detailed documentation and integration examples.
 
 ## Data Sources: Quick Reference
 

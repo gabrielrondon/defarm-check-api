@@ -35,6 +35,8 @@ servers:
 tags:
   - name: check
     description: Compliance check operations
+  - name: car
+    description: CAR (Cadastro Ambiental Rural) geometry queries
   - name: sources
     description: Data source information
   - name: samples
@@ -1035,6 +1037,209 @@ paths:
               schema:
                 type: object
 
+  /car/{carNumber}:
+    get:
+      tags:
+        - car
+      summary: Get CAR registration with polygon geometry
+      description: |
+        Retorna dados de um registro CAR (Cadastro Ambiental Rural) incluindo metadados
+        e geometria do polígono da propriedade.
+
+        **Dados:** 3.5M+ registros CAR de 20 estados brasileiros (SICAR).
+
+        **Query Parameters:**
+        - `includeGeometry` (boolean, default: true): Incluir geometria do polígono
+
+        **Response:**
+        - Metadados: carNumber, status, owner info, área, município, estado
+        - Geometry: Polígono MultiPolygon em formato GeoJSON (se includeGeometry=true)
+
+        **Uso:**
+        - Display CAR property boundaries on maps
+        - Verify property ownership and status
+        - Export CAR geometries for GIS analysis
+      operationId: getCarByNumber
+      parameters:
+        - name: carNumber
+          in: path
+          required: true
+          description: CAR registration number (e.g., AC-1200013-XXXXXXXX)
+          schema:
+            type: string
+            example: AC-1200013-XXXXXXXX
+        - name: includeGeometry
+          in: query
+          required: false
+          description: Include polygon geometry (default true)
+          schema:
+            type: boolean
+            default: true
+      security: []
+      responses:
+        '200':
+          description: CAR registration found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CARRegistration'
+        '404':
+          description: CAR not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Not Found
+                  message:
+                    type: string
+                    example: CAR registration not found
+                  carNumber:
+                    type: string
+                    example: XX-9999999-XXXXXXXX
+
+  /car/{carNumber}/geojson:
+    get:
+      tags:
+        - car
+      summary: Get CAR as GeoJSON Feature
+      description: |
+        Retorna registro CAR como uma Feature GeoJSON completa, pronta para
+        renderização direta em mapas (Leaflet, Mapbox, Google Maps, etc).
+
+        **Response:** GeoJSON Feature com:
+        - `type`: "Feature"
+        - `properties`: Todos os metadados do CAR
+        - `geometry`: MultiPolygon geometry
+
+        **Uso:**
+        - Direct integration with mapping libraries
+        - Export CAR boundary as GeoJSON file
+        - Combine multiple Features into FeatureCollection
+      operationId: getCarGeoJSON
+      parameters:
+        - name: carNumber
+          in: path
+          required: true
+          description: CAR registration number
+          schema:
+            type: string
+            example: AC-1200013-XXXXXXXX
+      security: []
+      responses:
+        '200':
+          description: GeoJSON Feature returned
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - type
+                  - properties
+                  - geometry
+                properties:
+                  type:
+                    type: string
+                    enum: [Feature]
+                  properties:
+                    type: object
+                    properties:
+                      carNumber:
+                        type: string
+                      status:
+                        type: string
+                      ownerDocument:
+                        type: string
+                      ownerName:
+                        type: string
+                      propertyName:
+                        type: string
+                      areaHa:
+                        type: integer
+                      state:
+                        type: string
+                      municipality:
+                        type: string
+                      source:
+                        type: string
+                  geometry:
+                    type: object
+                    description: GeoJSON MultiPolygon geometry
+        '404':
+          description: CAR not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /car/batch:
+    post:
+      tags:
+        - car
+      summary: Batch query multiple CAR registrations
+      description: |
+        Consulta múltiplos registros CAR de uma vez (até 100 por requisição).
+
+        **Body Parameters:**
+        - `carNumbers` (array, required): Array de números CAR (máximo 100)
+        - `includeGeometry` (boolean, default: false): Incluir geometrias dos polígonos
+
+        **Response:**
+        - `count`: Número de CARs encontrados
+        - `requested`: Número de CARs solicitados
+        - `cars`: Array com dados dos CARs encontrados
+
+        **⚠️ Nota:** Batch requests por padrão NÃO incluem geometrias (`includeGeometry=false`)
+        para evitar respostas muito grandes. Use `includeGeometry=true` apenas se necessário.
+
+        **Uso:**
+        - Bulk verification of CAR registrations
+        - Generate reports for multiple properties
+        - Map multiple CAR boundaries at once
+      operationId: batchGetCars
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - carNumbers
+              properties:
+                carNumbers:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 100
+                  description: Array of CAR registration numbers (max 100)
+                  example: ["AC-1200013-XXXXXXXX", "MT-5100048-YYYYYYYY"]
+                includeGeometry:
+                  type: boolean
+                  default: false
+                  description: Include polygon geometries (default false)
+      security: []
+      responses:
+        '200':
+          description: Batch query results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    description: Number of CARs found
+                  requested:
+                    type: integer
+                    description: Number of CARs requested
+                  cars:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CARRegistration'
+
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -1471,6 +1676,85 @@ components:
           type: string
           description: URL de exemplo para testar no endpoint /check
           example: 'POST /check {"input":{"type":"CAR","value":"PR-4111506-..."}}'
+
+    CARRegistration:
+      type: object
+      description: Registro CAR completo com metadados e geometria opcional
+      required:
+        - carNumber
+        - state
+      properties:
+        carNumber:
+          type: string
+          description: Código único do registro CAR (formato UF-MUNICÍPIO-CÓDIGO)
+          example: "AC-1200013-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+        status:
+          type: string
+          enum: [AT, PE, CA, SU]
+          description: |
+            Status do registro CAR:
+            - AT (ATIVO): Registro ativo e válido
+            - PE (PENDENTE): Pendente de validação
+            - CA (CANCELADO): Registro cancelado
+            - SU (SUSPENSO): Registro suspenso
+          example: "AT"
+        ownerDocument:
+          type: string
+          nullable: true
+          description: CPF ou CNPJ do proprietário
+          example: "12345678901"
+        ownerName:
+          type: string
+          nullable: true
+          description: Nome do proprietário
+          example: "João da Silva"
+        propertyName:
+          type: string
+          nullable: true
+          description: Nome da propriedade rural
+          example: "Fazenda Esperança"
+        areaHa:
+          type: integer
+          nullable: true
+          description: Área total do imóvel em hectares
+          example: 1234
+        state:
+          type: string
+          description: Sigla do estado (UF)
+          example: "AC"
+        municipality:
+          type: string
+          nullable: true
+          description: Nome do município
+          example: "Acrelandia"
+        source:
+          type: string
+          description: Fonte dos dados
+          default: "SICAR"
+          example: "SICAR"
+        createdAt:
+          type: string
+          format: date-time
+          description: Data de criação do registro no banco
+          example: "2024-01-15T10:30:00.000Z"
+        geometry:
+          type: object
+          nullable: true
+          description: |
+            Geometria do polígono da propriedade em formato GeoJSON.
+            Retornado apenas se `includeGeometry=true`.
+          properties:
+            type:
+              type: string
+              enum: [MultiPolygon]
+            coordinates:
+              type: array
+              description: Array de coordenadas do MultiPolygon
+              items:
+                type: array
+          example:
+            type: "MultiPolygon"
+            coordinates: [[[[...]]]]
 
     Error:
       type: object
