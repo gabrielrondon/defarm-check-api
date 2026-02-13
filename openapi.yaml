@@ -962,7 +962,7 @@ paths:
         - samples
       summary: Get CAR registrations with irregular status
       description: |
-        Retorna até 10 registros CAR (Cadastro Ambiental Rural) com status irregular.
+        Retorna até 10 registros CAR (Cadastro Ambiental Rural) com status irregular **e geometria válida**.
 
         **Dados:** 8,096,127 registros CAR de 27 estados brasileiros (SICAR).
 
@@ -978,6 +978,13 @@ paths:
         Também retorna coordenadas do centróide para testes espaciais.
         API retorna FAIL quando CAR está cancelado ou suspenso.
 
+        **Garantia de geometria:**
+        Este endpoint **nunca** retorna samples com geometria vazia. A query filtra
+        `geometry IS NOT NULL` e `NOT ST_IsEmpty(geometry)`.
+        Se não houver CAR irregular com geometria válida, retorna amostras com
+        **qualquer status** que tenham geometria válida e inclui um `message`
+        explicando o fallback.
+
         **⚠️ Fix aplicado (2026-02-02):**
         Query SQL corrigido para usar códigos SICAR (CA/SU/PE) ao invés de nomes completos.
         Adicionado campo `statusDescription` para mapear códigos → nomes legíveis.
@@ -985,7 +992,7 @@ paths:
         **Response:** Cada sample inclui carNumber, status (código), statusDescription (legível),
         área (ha), município, estado e coordenadas do centróide.
 
-        Se `count: 0`, significa que não há CARs com status irregular no momento
+        Se `count: 0`, significa que não há CARs com geometria válida no momento
         (ou dados em processamento). Neste caso retorna `message` explicativo.
       operationId: getSamplesCar
       security: []
@@ -1104,20 +1111,22 @@ paths:
     get:
       tags:
         - car
-      summary: Get CAR as GeoJSON Feature
+      summary: Get CAR geometry as GeoJSON
       description: |
-        Retorna registro CAR como uma Feature GeoJSON completa, pronta para
-        renderização direta em mapas (Leaflet, Mapbox, Google Maps, etc).
+        Retorna **apenas a geometria** do CAR como GeoJSON (Polygon/MultiPolygon),
+        pronta para renderização direta em mapas (Leaflet, Mapbox, Google Maps, etc).
 
-        **Response:** GeoJSON Feature com:
-        - `type`: "Feature"
-        - `properties`: Todos os metadados do CAR
-        - `geometry`: MultiPolygon geometry
+        **Response:** GeoJSON Geometry com:
+        - `type`: "Polygon" ou "MultiPolygon"
+        - `coordinates`: array de coordenadas GeoJSON
 
         **Uso:**
         - Direct integration with mapping libraries
         - Export CAR boundary as GeoJSON file
-        - Combine multiple Features into FeatureCollection
+        - Combine multiple geometrias em FeatureCollection (client-side)
+
+        **Sem geometria:**
+        Se o CAR não tiver geometria válida, retorna `404` com mensagem explicativa.
       operationId: getCarGeoJSON
       parameters:
         - name: carNumber
@@ -1130,45 +1139,35 @@ paths:
       security: []
       responses:
         '200':
-          description: GeoJSON Feature returned
+          description: GeoJSON Geometry returned
           content:
             application/json:
               schema:
-                type: object
-                required:
-                  - type
-                  - properties
-                  - geometry
-                properties:
-                  type:
-                    type: string
-                    enum: [Feature]
-                  properties:
-                    type: object
+                oneOf:
+                  - type: object
+                    required:
+                      - type
+                      - coordinates
                     properties:
-                      carNumber:
+                      type:
                         type: string
-                      status:
+                        enum: [Polygon]
+                      coordinates:
+                        type: array
+                    additionalProperties: true
+                  - type: object
+                    required:
+                      - type
+                      - coordinates
+                    properties:
+                      type:
                         type: string
-                      ownerDocument:
-                        type: string
-                      ownerName:
-                        type: string
-                      propertyName:
-                        type: string
-                      areaHa:
-                        type: integer
-                      state:
-                        type: string
-                      municipality:
-                        type: string
-                      source:
-                        type: string
-                  geometry:
-                    type: object
-                    description: GeoJSON MultiPolygon geometry
+                        enum: [MultiPolygon]
+                      coordinates:
+                        type: array
+                    additionalProperties: true
         '404':
-          description: CAR not found
+          description: CAR not found or geometry not available
           content:
             application/json:
               schema:
