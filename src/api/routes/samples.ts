@@ -286,13 +286,39 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
       'AT': 'ATIVO'
     };
 
+    let rows = result.rows;
+    let message: string | undefined;
+
+    if (rows.length === 0) {
+      const fallback = await db.execute(sql`
+        SELECT
+          car_number,
+          status,
+          area_ha,
+          municipality,
+          state,
+          ST_Y(ST_Centroid(geometry)) as lat,
+          ST_X(ST_Centroid(geometry)) as lon
+        FROM car_registrations
+        WHERE geometry IS NOT NULL
+          AND NOT ST_IsEmpty(geometry)
+        ORDER BY RANDOM()
+        LIMIT 10
+      `);
+
+      rows = fallback.rows;
+      if (rows.length === 0) {
+        message = 'Nenhum CAR com geometria válida encontrado. Dados em processamento ou ausência de polígonos válidos.';
+      } else {
+        message = 'Nenhum CAR irregular com geometria válida encontrado. Retornando amostras com geometria válida de qualquer status.';
+      }
+    }
+
     return {
       source: 'CAR - Cadastro Ambiental Rural (SICAR)',
-      count: result.rows.length,
-      message: result.rows.length === 0
-        ? 'Nenhum CAR com status irregular encontrado. Dados em processamento ou todos registros estão ativos.'
-        : undefined,
-      samples: result.rows.map((r: any) => ({
+      count: rows.length,
+      message,
+      samples: rows.map((r: any) => ({
         carNumber: r.car_number,
         status: r.status,
         statusDescription: statusMap[r.status] || r.status,
