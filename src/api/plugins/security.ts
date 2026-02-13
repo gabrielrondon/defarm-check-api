@@ -19,7 +19,9 @@ export async function securityPlugin(app: FastifyInstance) {
         /^https:\/\/.*\.lovableproject\.com$/,
         /^https:\/\/.*\.lovable\.app$/,
         /^http:\/\/localhost(:\d+)?$/,
-        /^https:\/\/defarm-check-api-production\.up\.railway\.app$/
+        /^https:\/\/defarm-check-api-production\.up\.railway\.app$/,
+        /^https:\/\/defarm\.net$/,
+        /^https:\/\/www\.defarm\.net$/
       ];
 
       // Check if origin matches any allowed domain
