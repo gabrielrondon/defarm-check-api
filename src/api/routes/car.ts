@@ -75,7 +75,8 @@ const carRoutes: FastifyPluginAsync = async (fastify) => {
             createdAt: { type: 'string' },
             geometry: {
               type: 'object',
-              description: 'GeoJSON geometry (if includeGeometry=true)'
+              description: 'GeoJSON geometry (if includeGeometry=true)',
+              additionalProperties: true
             }
           }
         },
@@ -194,7 +195,8 @@ const carRoutes: FastifyPluginAsync = async (fastify) => {
       response: {
         200: {
           type: 'object',
-          description: 'GeoJSON Geometry object'
+          description: 'GeoJSON Geometry object',
+          additionalProperties: true
         },
         404: {
           type: 'object',
