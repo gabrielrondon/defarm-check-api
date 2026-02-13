@@ -268,6 +268,7 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
       FROM car_registrations
       WHERE status IN ('CA', 'SU', 'PE')
         AND geometry IS NOT NULL
+        AND NOT ST_IsEmpty(geometry)
       ORDER BY
         CASE
           WHEN status = 'CA' THEN 1

@@ -10,6 +10,25 @@ import { FastifyPluginAsync } from 'fastify';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 
+const normalizeGeometry = (geometryGeojson: string | null) => {
+  if (!geometryGeojson) return null;
+  try {
+    const parsed = JSON.parse(geometryGeojson);
+    if (!parsed || typeof parsed !== 'object') return null;
+    if (typeof parsed.type !== 'string') return null;
+    if (parsed.type === 'GeometryCollection') {
+      if (!Array.isArray((parsed as any).geometries)) return null;
+      if ((parsed as any).geometries.length === 0) return null;
+      return parsed;
+    }
+    if (!('coordinates' in parsed)) return null;
+    if (Array.isArray((parsed as any).coordinates) && (parsed as any).coordinates.length === 0) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
 const carRoutes: FastifyPluginAsync = async (fastify) => {
 
   /**
@@ -138,8 +157,9 @@ const carRoutes: FastifyPluginAsync = async (fastify) => {
       };
 
       // Add geometry if requested
-      if (includeGeometry && car.geometry_geojson) {
-        response.geometry = JSON.parse(car.geometry_geojson);
+      if (includeGeometry) {
+        const geometry = normalizeGeometry(car.geometry_geojson ?? null);
+        if (geometry) response.geometry = geometry;
       }
 
       return reply.send(response);
@@ -155,12 +175,12 @@ const carRoutes: FastifyPluginAsync = async (fastify) => {
 
   /**
    * GET /car/:carNumber/geojson
-   * Get CAR as a complete GeoJSON Feature (for direct map rendering)
+   * Get only the CAR geometry as GeoJSON (for direct map rendering)
    */
   fastify.get('/car/:carNumber/geojson', {
     schema: {
       tags: ['CAR'],
-      description: 'Get CAR registration as a GeoJSON Feature (ready for mapping)',
+      description: 'Get CAR geometry as GeoJSON (ready for mapping)',
       params: {
         type: 'object',
         required: ['carNumber'],
@@ -174,10 +194,14 @@ const carRoutes: FastifyPluginAsync = async (fastify) => {
       response: {
         200: {
           type: 'object',
+          description: 'GeoJSON Geometry object'
+        },
+        404: {
+          type: 'object',
           properties: {
-            type: { type: 'string', enum: ['Feature'] },
-            properties: { type: 'object' },
-            geometry: { type: 'object' }
+            error: { type: 'string' },
+            message: { type: 'string' },
+            carNumber: { type: 'string' }
           }
         }
       }
@@ -213,24 +237,16 @@ const carRoutes: FastifyPluginAsync = async (fastify) => {
 
       const car: any = result.rows[0];
 
-      // Build GeoJSON Feature
-      const feature = {
-        type: 'Feature',
-        properties: {
-          carNumber: car.car_number,
-          status: car.status,
-          ownerDocument: car.owner_document,
-          ownerName: car.owner_name,
-          propertyName: car.property_name,
-          areaHa: car.area_ha,
-          state: car.state,
-          municipality: car.municipality,
-          source: car.source
-        },
-        geometry: car.geometry_geojson ? JSON.parse(car.geometry_geojson) : null
-      };
+      const geometry = normalizeGeometry(car.geometry_geojson ?? null);
+      if (!geometry) {
+        return reply.status(404).send({
+          error: 'Not Found',
+          message: 'CAR geometry not available',
+          carNumber: carNumber
+        });
+      }
 
-      return reply.send(feature);
+      return reply.send(geometry);
 
     } catch (err) {
       fastify.log.error({ err, carNumber }, 'Failed to fetch CAR GeoJSON');
@@ -328,8 +344,9 @@ const carRoutes: FastifyPluginAsync = async (fastify) => {
           source: car.source
         };
 
-        if (includeGeometry && car.geometry_geojson) {
-          response.geometry = JSON.parse(car.geometry_geojson);
+        if (includeGeometry) {
+          const geometry = normalizeGeometry(car.geometry_geojson ?? null);
+          if (geometry) response.geometry = geometry;
         }
 
         return response;
