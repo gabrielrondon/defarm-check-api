@@ -1,8 +1,8 @@
 import { v4 as uuidv4 } from 'uuid';
-import { CheckRequest, NormalizedInput } from '../types/input.js';
+import { CheckRequest, NormalizedInput, Country } from '../types/input.js';
 import { CheckResponse, SourceResult } from '../types/verdict.js';
 import { checkerRegistry } from '../checkers/index.js';
-import { normalizeInput } from '../utils/validators.js';
+import { normalizeInput, detectCountryFromInputType } from '../utils/validators.js';
 import { logger } from '../utils/logger.js';
 import { db } from '../db/client.js';
 import { checkRequests } from '../db/schema.js';
@@ -91,10 +91,13 @@ export class OrchestratorService {
 
   // Normaliza input
   private async normalizeInput(input: any): Promise<NormalizedInput> {
+    // Detectar país (pode vir explícito ou ser auto-detectado)
+    const country = detectCountryFromInputType(input.type, input.country);
+
     // Handle ADDRESS type - geocode to coordinates
     if (input.type === InputType.ADDRESS) {
       const address = String(input.value);
-      logger.debug({ address }, 'Geocoding address');
+      logger.debug({ address, country }, 'Geocoding address');
 
       try {
         const geocoded = await geocodingService.geocode(address);
@@ -103,6 +106,7 @@ export class OrchestratorService {
           type: InputType.COORDINATES, // Convert to COORDINATES for checkers
           value: `${geocoded.coordinates.lat},${geocoded.coordinates.lon}`,
           originalValue: address,
+          country, // Preserve country
           coordinates: geocoded.coordinates,
           metadata: {
             originalType: InputType.ADDRESS,
@@ -114,6 +118,7 @@ export class OrchestratorService {
         logger.info(
           {
             address,
+            country,
             coordinates: geocoded.coordinates,
             source: geocoded.source
           },
@@ -134,7 +139,8 @@ export class OrchestratorService {
     const normalized: NormalizedInput = {
       type: input.type,
       value: normalizeInput(input.type, input.value),
-      originalValue: input.value
+      originalValue: input.value,
+      country // Add country to normalized input
     };
 
     // Se for coordenadas, salvar objeto também
@@ -172,6 +178,7 @@ export class OrchestratorService {
         inputType: input.type,
         inputValue: input.originalValue.toString(),
         inputNormalized: input.value,
+        country: input.country, // Add country
         verdict: response.verdict,
         score: response.score,
         sourcesChecked: response.sources.map(s => s.name),

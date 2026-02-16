@@ -1,19 +1,44 @@
 # Check API - DeFarm Compliance Socioambiental
 
-API de verificação de compliance socioambiental que agrega múltiplas fontes de dados públicos para validar conformidade de produtores, propriedades e produtos rurais no Brasil.
+**Multi-country socio-environmental compliance verification API**
+
+API de verificação de compliance socioambiental que agrega múltiplas fontes de dados públicos para validar conformidade de produtores, propriedades e produtos rurais.
 
 **🌐 Produção:** https://defarm-check-api-production.up.railway.app
+
+## 🌎 Multi-Country Support
+
+**Países Suportados:**
+- 🇧🇷 **Brasil** - 15+ fontes de dados (Lista Suja, IBAMA, PRODES, CAR, etc)
+- 🇺🇾 **Uruguay** - SNAP áreas protegidas, DICOSE cadastro rural
+
+**Tipos de Documento:**
+- Brasil: CNPJ, CPF, CAR, IE
+- Uruguay: RUC, CI (Cédula de Identidad)
+- Universal: Coordenadas GPS, Endereço
 
 ## 🎯 O que a API faz?
 
 > **📘 Quer entender em profundidade?** Leia o [Overview Completo](./docs/OVERVIEW.md) para detalhes sobre o problema do agronegócio, cada fonte de dados, como coletamos e armazenamos informações, e muito mais.
 
-Verifica automaticamente se um produtor, propriedade ou produto está em conformidade com regulamentações socioambientais brasileiras, consultando:
+Verifica automaticamente se um produtor, propriedade ou produto está em conformidade com regulamentações socioambientais, consultando:
 
+### 🇧🇷 Brasil (15+ fontes)
 - **Lista Suja do Trabalho Escravo** (MTE) - 678 registros
 - **Embargos Ambientais** (IBAMA) - 65,953 documentos
-- **Desmatamento** (PRODES/INPE) - Dados geoespaciais
-- **Cadastro Ambiental Rural** (CAR/SICAR)
+- **Desmatamento** (PRODES/DETER/INPE) - Dados geoespaciais
+- **Cadastro Ambiental Rural** (CAR/SICAR) - 3.5M+ propriedades
+- **Terras Indígenas** (FUNAI) - Áreas demarcadas
+- **Unidades de Conservação** (ICMBio) - Áreas protegidas
+- **Sanções CGU** (CEIS/CNEP/CEAF) - Penalidades administrativas
+- **MapBiomas Alerta** - Desmatamento validado
+- **Queimadas** (INPE) - Focos de calor
+- **Produtores Orgânicos** (MAPA) - Certificações
+- **Outorgas ANA** - Uso de recursos hídricos
+
+### 🇺🇾 Uruguay (2 fontes)
+- **SNAP** - Sistema Nacional de Áreas Protegidas (22 áreas)
+- **DICOSE** - Cadastro rural/pecuário (~50K estabelecimentos)
 
 ## 🚀 Quick Start - Produção
 
@@ -57,6 +82,84 @@ curl -X POST https://defarm-check-api-production.up.railway.app/check \
     "cacheHitRate": 0.33,
     "apiVersion": "1.0.0"
   }
+}
+```
+
+## 🇺🇾 Uruguay - Ejemplos de Uso
+
+### Verificar RUC (Registro Único de Contribuyentes)
+
+```bash
+curl -X POST https://defarm-check-api-production.up.railway.app/check \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: SUA_API_KEY" \
+  -d '{
+    "input": {
+      "type": "RUC",
+      "value": "220123456789",
+      "country": "UY"
+    }
+  }'
+```
+
+**Checkers ejecutados:**
+- **DICOSE Rural Registry** - Verifica si tiene declaración ganadera válida
+- Otros checkers compatibles con RUC
+
+### Verificar CI (Cédula de Identidad)
+
+```bash
+curl -X POST https://defarm-check-api-production.up.railway.app/check \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: SUA_API_KEY" \
+  -d '{
+    "input": {
+      "type": "CI",
+      "value": "1.234.567-2",
+      "country": "UY"
+    }
+  }'
+```
+
+**Nota:** El campo `country` es opcional - se detecta automáticamente por el tipo de documento (RUC/CI = Uruguay).
+
+### Verificar Coordenadas en Uruguay
+
+```bash
+curl -X POST https://defarm-check-api-production.up.railway.app/check \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: SUA_API_KEY" \
+  -d '{
+    "input": {
+      "type": "COORDINATES",
+      "value": {"lat": -34.0, "lon": -53.5},
+      "country": "UY"
+    }
+  }'
+```
+
+**Checkers ejecutados:**
+- **SNAP Protected Areas** - Verifica si cae en área protegida (22 áreas)
+
+**Respuesta ejemplo:**
+```json
+{
+  "verdict": "NON_COMPLIANT",
+  "score": 0,
+  "sources": [
+    {
+      "name": "SNAP Protected Areas",
+      "status": "FAIL",
+      "severity": "HIGH",
+      "message": "Coordinates fall within SNAP protected area: Parque Nacional Santa Teresa",
+      "details": {
+        "areaName": "Parque Nacional Santa Teresa",
+        "category": "Parque Nacional",
+        "department": "Rocha",
+        "legalFramework": "Ley 17.234 (2000)"
+      }
+    }
+  ]
 }
 ```
 

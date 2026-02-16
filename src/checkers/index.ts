@@ -22,6 +22,10 @@ import { CarProdesIntersectionChecker } from './environmental/car-prodes-interse
 // Positive checkers (certifications, compliance indicators)
 import { MapaOrganicosChecker } from './positive/mapa-organicos.js';
 
+// Uruguay checkers
+import snapProtectedAreasChecker from './uruguay/snap-protected-areas.js';
+import dicoseRuralChecker from './uruguay/dicose-rural.js';
+
 // Register all checkers
 checkerRegistry.register(slaveLaborChecker);
 checkerRegistry.register(cguSanctionsChecker);
@@ -36,6 +40,10 @@ checkerRegistry.register(new MapBiomasAlertaChecker());
 checkerRegistry.register(new MapaOrganicosChecker());
 checkerRegistry.register(new AnaOutorgasChecker());
 checkerRegistry.register(new CarProdesIntersectionChecker());
+
+// Uruguay checkers
+checkerRegistry.register(snapProtectedAreasChecker);
+checkerRegistry.register(dicoseRuralChecker);
 
 export { checkerRegistry };
 export * from './base.js';

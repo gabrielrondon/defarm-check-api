@@ -4,17 +4,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-DeFarm Check API - A socio-environmental compliance verification API that aggregates multiple public data sources to validate compliance of rural producers, properties, and products in Brazil.
+DeFarm Check API - A **multi-country** socio-environmental compliance verification API that aggregates multiple public data sources to validate compliance of rural producers, properties, and products.
 
 **Production URL:** https://defarm-check-api-production.up.railway.app
 
-The API checks against:
+**Supported Countries:**
+- 🇧🇷 **Brazil** - 15+ data sources
+- 🇺🇾 **Uruguay** - 2 data sources (expanding)
+
+**Brazil Data Sources:**
 - **Lista Suja do Trabalho Escravo** (Slave Labor Registry - MTE) - 678 records
 - **Embargos Ambientais** (IBAMA Environmental Embargoes) - 65,953 documents
 - **Desmatamento** (Deforestation - PRODES/DETER/INPE) - Geospatial data
 - **Terras Indígenas** (Indigenous Lands - FUNAI) - Protected territories
 - **Unidades de Conservação** (Conservation Units - ICMBio) - Protected areas
 - **Cadastro Ambiental Rural** (CAR/SICAR) - Rural environmental registry
+- **MapBiomas Alerta** - Validated deforestation alerts
+- **Queimadas** (INPE) - Fire hotspots
+- **Sanções CGU** (CEIS/CNEP/CEAF) - Administrative sanctions
+- **MAPA Orgânicos** - Organic producers
+- **Outorgas ANA** - Water use permits
+
+**Uruguay Data Sources:**
+- **SNAP** - Sistema Nacional de Áreas Protegidas (22 protected areas)
+- **DICOSE** - Rural/livestock registry (~50K establishments)
 
 ## Development Commands
 
@@ -40,7 +53,7 @@ npm run db:seed          # Seed checker sources metadata
 # API Keys
 npm run create-api-key -- --name "App Name" --rate-limit 1000
 
-# Data Seeding (Production/Railway)
+# Data Seeding - Brazil (Production/Railway)
 npm run seed:lista-suja-simple      # Seed Lista Suja (MTE) from data/lista_suja_clean.json
 npm run seed:ibama-simple           # Seed IBAMA embargoes from data/ibama_embargos_aggregated.json
 npm run seed:terras-indigenas       # Seed Indigenous Lands from data/terras_indigenas.json
@@ -48,6 +61,12 @@ npm run seed:unidades-conservacao   # Seed Conservation Units from downloaded da
 npm run seed:deter                  # Seed DETER alerts from downloaded data
 npm run seed:car                    # Seed CAR registrations (priority states)
 npm run seed:all-production         # Seed all production data at once
+
+# Data Seeding - Uruguay
+npm run data:snap-areas             # Download/validate SNAP protected areas data
+npm run seed:snap-areas             # Seed SNAP areas (requires manual shapefile download)
+npm run data:dicose -- --year=2024  # Guide for downloading DICOSE CSVs
+npm run seed:dicose -- --year=2024  # Seed DICOSE registrations
 
 # Data Download (pulls from government sources)
 npm run data:lista-suja             # Download Lista Suja from MTE
@@ -93,11 +112,13 @@ src/
 │   ├── plugins/         # security.ts (CORS, helmet, rate-limit), swagger.ts
 │   └── server.ts        # Fastify app setup
 ├── checkers/
-│   ├── base.ts          # Abstract BaseChecker class (cache, timeout, error handling)
+│   ├── base.ts          # Abstract BaseChecker class (cache, timeout, error handling, country filtering)
 │   ├── registry.ts      # CheckerRegistry singleton (register, getActive, getApplicable)
-│   ├── environmental/   # Deforestation, IBAMA, CAR, DETER, Indigenous Lands, Conservation Units
-│   ├── social/          # Slave Labor Registry
-│   ├── legal/           # (future: SISBOV, licensing)
+│   ├── environmental/   # Brazil: Deforestation, IBAMA, CAR, DETER, Indigenous Lands, Conservation Units
+│   ├── social/          # Brazil: Slave Labor Registry
+│   ├── legal/           # Brazil: CGU Sanctions
+│   ├── positive/        # Brazil: MAPA Organics, ANA Outorgas
+│   ├── uruguay/         # Uruguay: SNAP Protected Areas, DICOSE Rural Registry
 │   └── index.ts         # Auto-registers all checkers
 ├── services/
 │   ├── orchestrator.ts  # OrchestratorService (executeCheck, normalizeInput, selectCheckers)
@@ -171,6 +192,46 @@ For checkers that use PostGIS (deforestation, indigenous lands, conservation uni
 - Queries use `ST_Intersects`, `ST_Within`, `ST_Contains` for spatial matching
 - Input coordinates converted to PostGIS POINT for intersection checks
 
+### Multi-Country Architecture
+
+The API supports multiple countries with automatic detection and country-aware checkers:
+
+**Supported Countries:**
+- 🇧🇷 **Brazil** (`BR`) - CNPJ, CPF, CAR, IE
+- 🇺🇾 **Uruguay** (`UY`) - RUC, CI
+
+**Key Components:**
+
+1. **Input Type Detection** (`src/utils/validators.ts`):
+   ```typescript
+   // Auto-detect country from input type
+   detectCountryFromInputType(InputType.CNPJ) → Country.BRAZIL
+   detectCountryFromInputType(InputType.RUC) → Country.URUGUAY
+   ```
+
+2. **Country-Aware BaseChecker** (`src/checkers/base.ts`):
+   ```typescript
+   protected isApplicable(input: NormalizedInput): boolean {
+     // Check input type AND country
+     const typeSupported = this.metadata.supportedInputTypes.includes(input.type);
+     const supportedCountries = this.metadata.supportedCountries || [Country.BRAZIL];
+     const countrySupported = supportedCountries.includes(input.country);
+     return typeSupported && countrySupported;
+   }
+   ```
+
+3. **Multi-Country Database Schema**:
+   - All document-based tables include `country VARCHAR(2) DEFAULT 'BR'`
+   - Composite unique indexes on `(document, country)` allow same document in different countries
+   - Country-specific tables (e.g., `snap_areas_uruguay`, `dicose_registrations`)
+
+4. **Backwards Compatibility**:
+   - Default country is `'BR'` for all existing data
+   - Checkers without `supportedCountries` default to `[Country.BRAZIL]`
+   - Requests without `country` field auto-detect or default to Brazil
+
+**See [docs/MULTI_COUNTRY.md](./docs/MULTI_COUNTRY.md) for complete multi-country guide.**
+
 ### Worker Service & Cron Jobs
 
 Separate Node process (`src/worker/index.ts`) that runs scheduled data updates:
@@ -190,12 +251,25 @@ Jobs send Telegram notifications on start/success/failure (`src/services/telegra
 ### Database Schema
 
 Key tables (see `src/db/schema.ts`):
-- `check_requests` - All verification history (audit trail)
-- `lista_suja` - Slave labor registry (CPF/CNPJ indexed)
-- `ibama_embargoes` - Environmental embargoes (aggregated by document)
+
+**Brazil:**
+- `check_requests` - All verification history (includes `country` column)
+- `lista_suja` - Slave labor registry (multi-country with `country` column)
+- `ibama_embargoes` - Environmental embargoes (multi-country)
 - `prodes_deforestation` - PRODES deforestation polygons (PostGIS)
 - `deter_alerts` - Real-time deforestation alerts (PostGIS)
 - `terras_indigenas` - Indigenous lands (PostGIS)
+- `unidades_conservacao` - Conservation units (PostGIS, multi-country)
+- `car_registrations` - CAR rural registry (PostGIS)
+- `cgu_sancoes` - CGU sanctions (multi-country)
+- `mapbiomas_alerta` - MapBiomas alerts (PostGIS)
+- `queimadas_focos` - Fire hotspots (PostGIS)
+- `mapa_organicos` - Organic producers (multi-country)
+- `ana_outorgas` - Water permits
+
+**Uruguay:**
+- `snap_areas_uruguay` - SNAP protected areas (PostGIS)
+- `dicose_registrations` - DICOSE rural/livestock registry
 - `unidades_conservacao` - Conservation units (PostGIS)
 - `car_registrations` - CAR registry (PostGIS)
 - `api_keys` - API key authentication

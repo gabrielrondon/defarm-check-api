@@ -6,6 +6,7 @@ export const checkRequests = pgTable('check_requests', {
   inputType: varchar('input_type', { length: 50 }).notNull(),
   inputValue: varchar('input_value', { length: 255 }).notNull(),
   inputNormalized: varchar('input_normalized', { length: 255 }),
+  country: varchar('country', { length: 2 }).default('BR').notNull(), // País (BR, UY, etc)
   verdict: varchar('verdict', { length: 50 }),
   score: integer('score'),
   sourcesChecked: jsonb('sources_checked').$type<string[]>(),
@@ -141,11 +142,12 @@ export const mapaOrganicos = pgTable('mapa_organicos', {
   id: uuid('id').defaultRandom().primaryKey(),
   document: varchar('document', { length: 20 }).notNull(), // CPF/CNPJ normalizado
   documentFormatted: varchar('document_formatted', { length: 25 }), // Formato original
-  type: varchar('type', { length: 10 }).notNull(), // CPF ou CNPJ
+  type: varchar('type', { length: 10 }).notNull(), // CPF, CNPJ, RUC, CI
   producerName: text('producer_name').notNull(), // Nome do produtor
   entityType: varchar('entity_type', { length: 50 }), // CERTIFICADORA, OPAC, OCS
   entityName: text('entity_name'), // Nome da entidade certificadora
-  country: varchar('country', { length: 100 }), // País
+  countryName: varchar('country_name', { length: 100 }), // País (nome por extenso - dado original)
+  country: varchar('country', { length: 2 }).default('BR').notNull(), // País (código ISO - BR, UY, etc)
   state: varchar('state', { length: 50 }), // Estado
   city: varchar('city', { length: 255 }), // Município
   status: varchar('status', { length: 20 }).notNull(), // ATIVO ou INATIVO
@@ -157,7 +159,7 @@ export const mapaOrganicos = pgTable('mapa_organicos', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 });
 
-// Tabela de Unidades de Conservação (ICMBio)
+// Tabela de Unidades de Conservação (ICMBio) - Brasil
 // Nota: geometria será gerenciada via SQL direto (PostGIS)
 export const unidadesConservacao = pgTable('unidades_conservacao', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -168,9 +170,48 @@ export const unidadesConservacao = pgTable('unidades_conservacao', {
   state: varchar('state', { length: 2 }),
   municipality: varchar('municipality', { length: 255 }),
   sphere: varchar('sphere', { length: 50 }), // Federal, Estadual, Municipal
+  country: varchar('country', { length: 2 }).default('BR').notNull(),
   source: varchar('source', { length: 50 }).default('ICMBio'),
   // geometria será adicionada via SQL: geometry(MULTIPOLYGON, 4326)
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
+// Tabela de Áreas Protegidas SNAP (Uruguay)
+// Nota: geometria será gerenciada via SQL direto (PostGIS)
+export const snapAreasUruguay = pgTable('snap_areas_uruguay', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(), // Nome da área protegida
+  category: varchar('category', { length: 100 }), // Categoria (Parque Nacional, Monumento Natural, etc)
+  areaHa: integer('area_ha'), // Área em hectares
+  department: varchar('department', { length: 100 }), // Departamento (equivalente a estado)
+  municipality: varchar('municipality', { length: 255 }),
+  legalStatus: varchar('legal_status', { length: 100 }), // Status legal
+  establishedDate: date('established_date'), // Data de criação
+  country: varchar('country', { length: 2 }).default('UY').notNull(),
+  source: varchar('source', { length: 50 }).default('SNAP'),
+  // geometria será adicionada via SQL: geometry(MULTIPOLYGON, 4326)
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
+// Tabela de Registros DICOSE (Uruguay) - Cadastro Pecuário
+// DICOSE = División de Contralor de Semovientes (MGAP)
+export const dicoseRegistrations = pgTable('dicose_registrations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  establishmentId: varchar('establishment_id', { length: 50 }).notNull(), // ID do estabelecimento DICOSE
+  producerDocument: varchar('producer_document', { length: 20 }), // RUC ou CI do produtor
+  producerName: text('producer_name'), // Nome do produtor
+  year: integer('year').notNull(), // Ano da declaração (2024, 2023, etc)
+  areaHa: integer('area_ha'), // Área explorada em hectares
+  department: varchar('department', { length: 100 }).notNull(), // Departamento (Rocha, Canelones, etc)
+  section: varchar('section', { length: 50 }), // Seção cadastral
+  activity: varchar('activity', { length: 100 }), // Tipo de atividade (bovinos, ovinos, etc)
+  livestockCount: jsonb('livestock_count').$type<any>(), // Contagem por espécie (bovinos: X, ovinos: Y)
+  landUse: jsonb('land_use').$type<any>(), // Uso do solo (agricultura: X ha, pastos: Y ha)
+  declarationStatus: varchar('declaration_status', { length: 50 }).default('DECLARED'), // Status da declaração
+  country: varchar('country', { length: 2 }).default('UY').notNull(),
+  source: varchar('source', { length: 50 }).default('DICOSE'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
 });
 
 // Tabela de CAR - Cadastro Ambiental Rural (SICAR)
@@ -193,9 +234,10 @@ export const carRegistrations = pgTable('car_registrations', {
 // Tabela Lista Suja do Trabalho Escravo (MTE)
 export const listaSuja = pgTable('lista_suja', {
   id: uuid('id').defaultRandom().primaryKey(),
-  document: varchar('document', { length: 20 }).notNull().unique(), // CPF ou CNPJ sem formatação
+  document: varchar('document', { length: 20 }).notNull(), // CPF ou CNPJ sem formatação
   documentFormatted: varchar('document_formatted', { length: 25 }),
-  type: varchar('type', { length: 10 }).notNull(), // CPF ou CNPJ
+  type: varchar('type', { length: 10 }).notNull(), // CPF, CNPJ, RUC, CI
+  country: varchar('country', { length: 2 }).default('BR').notNull(), // País (BR, UY, etc)
   name: text('name').notNull(),
   year: integer('year').notNull(),
   state: varchar('state', { length: 2 }),
@@ -211,7 +253,8 @@ export const ibamaEmbargoes = pgTable('ibama_embargoes', {
   id: uuid('id').defaultRandom().primaryKey(),
   document: varchar('document', { length: 20 }).notNull(), // CPF ou CNPJ sem formatação
   documentFormatted: varchar('document_formatted', { length: 25 }),
-  type: varchar('type', { length: 10 }).notNull(), // CPF ou CNPJ
+  type: varchar('type', { length: 10 }).notNull(), // CPF, CNPJ, RUC, CI
+  country: varchar('country', { length: 2 }).default('BR').notNull(), // País (BR, UY, etc)
   name: text('name').notNull(),
   embargoCount: integer('embargo_count').notNull(),
   totalAreaHa: integer('total_area_ha').notNull(),
@@ -224,7 +267,8 @@ export const cguSancoes = pgTable('cgu_sancoes', {
   id: uuid('id').defaultRandom().primaryKey(),
   document: varchar('document', { length: 20 }).notNull(), // CPF ou CNPJ sem formatação
   documentFormatted: varchar('document_formatted', { length: 25 }),
-  type: varchar('type', { length: 10 }).notNull(), // CPF ou CNPJ
+  type: varchar('type', { length: 10 }).notNull(), // CPF, CNPJ, RUC, CI
+  country: varchar('country', { length: 2 }).default('BR').notNull(), // País (BR, UY, etc)
   name: text('name').notNull(),
   sanctionType: varchar('sanction_type', { length: 10 }).notNull(), // CEIS, CNEP, CEAF
   category: varchar('category', { length: 100 }), // Categoria da sanção

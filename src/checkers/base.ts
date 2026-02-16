@@ -6,7 +6,7 @@ import {
   CheckerConfig,
   Severity
 } from '../types/checker.js';
-import { NormalizedInput, InputType } from '../types/input.js';
+import { NormalizedInput, InputType, Country } from '../types/input.js';
 import { cacheService } from '../services/cache.js';
 import { logger } from '../utils/logger.js';
 import { CheckerError } from '../utils/errors.js';
@@ -73,7 +73,17 @@ export abstract class BaseChecker {
 
   // Verifica se o checker é aplicável ao input
   protected isApplicable(input: NormalizedInput): boolean {
-    return this.metadata.supportedInputTypes.includes(input.type);
+    // Verifica tipo de input
+    const typeSupported = this.metadata.supportedInputTypes.includes(input.type);
+    if (!typeSupported) {
+      return false;
+    }
+
+    // Verifica país (backwards compatibility: se não especificado, assume Brasil)
+    const supportedCountries = this.metadata.supportedCountries || [Country.BRAZIL];
+    const countrySupported = supportedCountries.includes(input.country);
+
+    return countrySupported;
   }
 
   // Resultado quando não é aplicável

@@ -1,11 +1,24 @@
 import { z } from 'zod';
 
+// Países suportados
+export enum Country {
+  BRAZIL = 'BR',
+  URUGUAY = 'UY'
+}
+
 // Tipos de input suportados
 export enum InputType {
+  // Brasil
   CNPJ = 'CNPJ',
   CPF = 'CPF',
   CAR = 'CAR',
   IE = 'IE', // Inscrição Estadual
+
+  // Uruguay
+  RUC = 'RUC', // Registro Único de Contribuyentes (12 dígitos)
+  CI = 'CI',   // Cédula de Identidad (7-8 dígitos + check digit)
+
+  // Universal
   COORDINATES = 'COORDINATES',
   ADDRESS = 'ADDRESS',
   NAME = 'NAME' // Nome do produtor/empresa
@@ -22,7 +35,8 @@ export const InputSchema = z.object({
   value: z.union([
     z.string().min(1),
     CoordinatesSchema
-  ])
+  ]),
+  country: z.nativeEnum(Country).optional() // País opcional (auto-detectado por tipo de documento)
 });
 
 export const CheckOptionsSchema = z.object({
@@ -48,6 +62,7 @@ export interface NormalizedInput {
   type: InputType;
   value: string;
   originalValue: string | Coordinates;
+  country: Country; // País sempre presente após normalização
   coordinates?: Coordinates;
   metadata?: Record<string, any>;
 }
