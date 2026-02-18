@@ -2,12 +2,16 @@ openapi: 3.0.3
 info:
   title: DeFarm Check API
   description: |
-    API de verificação de compliance socioambiental para o agronegócio brasileiro.
+    API de verificação de compliance socioambiental multi-país para o agronegócio.
 
     Agrega múltiplas fontes de dados públicos governamentais para validar conformidade
     de produtores, propriedades e produtos rurais.
 
-    **Fontes de dados:**
+    **Países suportados:**
+    - 🇧🇷 Brasil (CNPJ, CPF, CAR, Coordenadas)
+    - 🇺🇾 Uruguai (RUC, CI, Coordenadas)
+
+    **Fontes de dados - Brasil:**
     - Lista Suja do Trabalho Escravo (MTE) - 678 registros
     - Embargos Ambientais (IBAMA) - 65,953 documentos
     - Desmatamento Histórico (PRODES/INPE) - Dados geoespaciais anuais
@@ -16,8 +20,12 @@ info:
     - Unidades de Conservação (ICMBio) - Todas UCs federais, estaduais e municipais
     - Cadastro Ambiental Rural (CAR/SICAR) - Cobertura nacional 27 estados
 
+    **Fontes de dados - Uruguai:**
+    - SNAP - Sistema Nacional de Áreas Protegidas (MVOTMA)
+    - DICOSE - Registro Rural/Pecuário (MGAP)
+
     **Documentação completa:** https://github.com/gabrielrondon/defarm-check-api
-  version: 2.1.0
+  version: 2.2.0
   contact:
     name: DeFarm Support
     email: suporte@defarm.com
@@ -198,6 +206,29 @@ paths:
                   input:
                     type: ADDRESS
                     value: "São Paulo, SP"
+              ruc_uruguay:
+                summary: Verificar RUC (Uruguai)
+                value:
+                  input:
+                    type: RUC
+                    value: "210000000001"
+                    country: UY
+              ci_uruguay:
+                summary: Verificar CI (Uruguai)
+                value:
+                  input:
+                    type: CI
+                    value: "12345678"
+                    country: UY
+              coordinates_uruguay:
+                summary: Verificar coordenadas (Uruguai)
+                value:
+                  input:
+                    type: COORDINATES
+                    value:
+                      lat: -34.4711
+                      lon: -56.1945
+                    country: UY
               with_options:
                 summary: Com opções customizadas
                 value:
@@ -431,7 +462,7 @@ paths:
                 $ref: '#/components/schemas/Error'
               example:
                 error: "Bad Request"
-                message: "Invalid input type. Must be one of: CNPJ, CPF, COORDINATES"
+                message: "Invalid input type. Must be one of: CNPJ, CPF, CAR, IE, RUC, CI, COORDINATES, ADDRESS, NAME"
                 statusCode: 400
         '401':
           description: Unauthorized - API key inválida ou ausente
@@ -720,6 +751,7 @@ paths:
         - Verificar quais fontes estão populadas
 
         **Fontes incluídas:**
+        **Brasil:**
         - `listaSuja`: CPF/CNPJ na Lista Suja do Trabalho Escravo
         - `ibama`: CPF/CNPJ com embargos IBAMA
         - `terrasIndigenas`: Coordenadas dentro de Terras Indígenas
@@ -727,6 +759,10 @@ paths:
         - `deter`: Alertas DETER recentes (pode ser null se API offline)
         - `car`: CAR com status irregular (CA/SU/PE)
         - `prodes`: Coordenadas com desmatamento PRODES
+
+        **Uruguai:**
+        - `snap`: Coordenadas dentro de áreas protegidas SNAP
+        - `dicose`: RUC/CI com declarações DICOSE
 
         **Nota:** Alguns campos podem ser `null` se as APIs governamentais estiverem
         temporariamente indisponíveis (não bloqueante - checkers tratam isso retornando PASS).
@@ -763,6 +799,213 @@ paths:
                   prodes:
                     type: object
                     nullable: true
+                  snap:
+                    type: object
+                    nullable: true
+                    description: Amostra de área protegida SNAP (Uruguai)
+                  dicose:
+                    type: object
+                    nullable: true
+                    description: Amostra de registro DICOSE (Uruguai)
+
+  /samples/snap:
+    get:
+      tags:
+        - samples
+      summary: Get samples from SNAP Protected Areas (Uruguay)
+      description: |
+        Retorna até 10 coordenadas aleatórias dentro de áreas protegidas do **SNAP**
+        (Sistema Nacional de Áreas Protegidas) do Uruguai.
+
+        **Dados:** Parques nacionais, reservas naturais e paisagens protegidas (MVOTMA).
+
+        **Input types suportados:** COORDINATES (com `country: UY`)
+
+        **Uso:**
+        Use as coordenadas retornadas para testar o endpoint `/check`.
+        A API retorna FAIL quando as coordenadas estão dentro de uma área SNAP.
+
+        **Exemplo de request:**
+        ```json
+        POST /check
+        {
+          "input": {
+            "type": "COORDINATES",
+            "value": { "lat": -34.4711, "lon": -56.1945 },
+            "country": "UY"
+          }
+        }
+        ```
+
+        **Response:** Cada sample inclui nome da área, categoria, área (ha),
+        departamento e coordenadas do centróide.
+      operationId: getSamplesSnap
+      security: []
+      responses:
+        '200':
+          description: Samples SNAP retornados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  source:
+                    type: string
+                    example: "SNAP - Sistema Nacional de Áreas Protegidas (Uruguay)"
+                  country:
+                    type: string
+                    example: "UY"
+                  count:
+                    type: integer
+                    example: 10
+                  message:
+                    type: string
+                    nullable: true
+                  samples:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                          example: "Parque Nacional Cabo Polonio"
+                        category:
+                          type: string
+                          example: "Parque Nacional"
+                        areaHa:
+                          type: number
+                          example: 7900
+                        department:
+                          type: string
+                          example: "Rocha"
+                        municipality:
+                          type: string
+                          nullable: true
+                        legalStatus:
+                          type: string
+                          example: "Vigente"
+                        establishedDate:
+                          type: string
+                          nullable: true
+                        coordinates:
+                          type: object
+                          properties:
+                            lat:
+                              type: number
+                              example: -34.4711
+                            lon:
+                              type: number
+                              example: -56.1945
+                        testUrl:
+                          type: string
+                          example: 'POST /check {"input":{"type":"COORDINATES","value":{"lat":-34.4711,"lon":-56.1945},"country":"UY"}}'
+
+  /samples/dicose:
+    get:
+      tags:
+        - samples
+      summary: Get samples from DICOSE Livestock Registry (Uruguay)
+      description: |
+        Retorna até 10 documentos uruguaios (RUC ou CI) com declarações **DICOSE**
+        dos últimos 2 anos.
+
+        **DICOSE** (Declaración Jurada de Existencias de Ganado) é o censo pecuário
+        oficial do Uruguai, gerenciado pelo MGAP. Registra todos os estabelecimentos
+        rurais e seus rebanhos bovinos, ovinos e equinos.
+
+        Produtores presentes no DICOSE são considerados **registrados/conformes** —
+        indicador **positivo**. Ausência de declaração pode indicar não-conformidade.
+
+        **Tipos de documento:**
+        - **RUC** (12 dígitos): Registro Único de Contribuyentes (empresa/pessoa jurídica)
+        - **CI** (7–8 dígitos): Cédula de Identidad (pessoa física)
+
+        **Exemplo de request:**
+        ```json
+        POST /check
+        {
+          "input": {
+            "type": "RUC",
+            "value": "210000000001",
+            "country": "UY"
+          }
+        }
+        ```
+
+        **Response:** Cada sample inclui documento, tipo (RUC/CI), nome do produtor,
+        ano da declaração, área (ha), departamento e resumo do rebanho.
+      operationId: getSamplesDicose
+      security: []
+      responses:
+        '200':
+          description: Samples DICOSE retornados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  source:
+                    type: string
+                    example: "DICOSE - Rural/Livestock Registry (Uruguay)"
+                  country:
+                    type: string
+                    example: "UY"
+                  count:
+                    type: integer
+                    example: 10
+                  message:
+                    type: string
+                    nullable: true
+                  samples:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        document:
+                          type: string
+                          description: RUC (12 dígitos) ou CI (7–8 dígitos)
+                          example: "210000000001"
+                        documentType:
+                          type: string
+                          enum: [RUC, CI]
+                          example: "RUC"
+                        producerName:
+                          type: string
+                          nullable: true
+                          example: "Estancia El Ombú"
+                        establishmentId:
+                          type: string
+                          nullable: true
+                          example: "D-12345"
+                        year:
+                          type: integer
+                          example: 2024
+                        areaHa:
+                          type: number
+                          nullable: true
+                          example: 850.0
+                        department:
+                          type: string
+                          nullable: true
+                          example: "Tacuarembó"
+                        section:
+                          type: string
+                          nullable: true
+                          example: "3"
+                        activity:
+                          type: string
+                          nullable: true
+                          example: "Ganadería"
+                        livestockSummary:
+                          type: string
+                          example: "500 bovinos, 200 ovinos"
+                        declarationStatus:
+                          type: string
+                          nullable: true
+                          example: "PRESENTADA"
+                        testUrl:
+                          type: string
+                          example: 'POST /check {"input":{"type":"RUC","value":"210000000001","country":"UY"}}'
 
   /samples/lista-suja:
     get:
@@ -1253,6 +1496,13 @@ components:
         **Rate limit:** 10,000 requisições/minuto por key.
 
   schemas:
+    Country:
+      type: string
+      enum:
+        - BR
+        - UY
+      description: Código do país (ISO 3166-1 alpha-2)
+
     CheckRequest:
       type: object
       required:
@@ -1270,9 +1520,33 @@ components:
                 - CNPJ
                 - CPF
                 - CAR
+                - IE
+                - RUC
+                - CI
                 - COORDINATES
                 - ADDRESS
-              description: Tipo do input a ser verificado
+                - NAME
+              description: |
+                Tipo do input a ser verificado:
+                - **CNPJ**: CNPJ brasileiro (14 dígitos) — somente Brasil
+                - **CPF**: CPF brasileiro (11 dígitos) — somente Brasil
+                - **CAR**: Cadastro Ambiental Rural — somente Brasil
+                - **IE**: Inscrição Estadual — somente Brasil
+                - **RUC**: Registro Único de Contribuyentes (12 dígitos) — somente Uruguai
+                - **CI**: Cédula de Identidad uruguaia (7–8 dígitos) — somente Uruguai
+                - **COORDINATES**: Coordenadas geográficas (universal)
+                - **ADDRESS**: Endereço em texto livre (universal)
+                - **NAME**: Nome da empresa/produtor (universal)
+            country:
+              type: string
+              enum:
+                - BR
+                - UY
+              description: |
+                Código do país (ISO 3166-1 alpha-2). Opcional — detectado automaticamente
+                pelo tipo de input (RUC/CI → UY, CNPJ/CPF/CAR/IE → BR).
+                Obrigatório para COORDINATES quando país não pode ser inferido.
+              example: UY
             value:
               oneOf:
                 - type: string
