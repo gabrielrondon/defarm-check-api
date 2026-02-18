@@ -10,7 +10,25 @@ export async function checkRoutes(app: FastifyInstance) {
     preHandler: authenticateApiKey,
     schema: {
       tags: ['check'],
-      description: 'Execute compliance check',
+      summary: 'Execute compliance check',
+      description: `Run a socio-environmental compliance verification against all applicable data sources.
+
+**Brazil examples:**
+- CNPJ: \`{"input":{"type":"CNPJ","value":"12345678000190"}}\`
+- CPF: \`{"input":{"type":"CPF","value":"12345678901"}}\`
+- CAR: \`{"input":{"type":"CAR","value":"MT-5100250-XXXXXXXXXXXXXXXX"}}\`
+- Coordinates: \`{"input":{"type":"COORDINATES","value":{"lat":-9.3748,"lon":-68.2104}}}\`
+
+**Uruguay examples:**
+- RUC: \`{"input":{"type":"RUC","value":"210000000001","country":"UY"}}\`
+- CI: \`{"input":{"type":"CI","value":"12345678","country":"UY"}}\`
+- Coordinates: \`{"input":{"type":"COORDINATES","value":{"lat":-34.4711,"lon":-56.1945},"country":"UY"}}\`
+
+**Verdicts:**
+- \`PASS\` (score 80-100): No violations found
+- \`WARNING\` (score 50-79): Minor issues or data gaps
+- \`FAIL\` (score 0-49): Violations detected
+- \`ERROR\`: Check failed to execute`,
       body: {
         type: 'object',
         required: ['input'],
@@ -117,7 +135,8 @@ export async function checkRoutes(app: FastifyInstance) {
   app.get('/checks/:id', {
     schema: {
       tags: ['check'],
-      description: 'Get check by ID',
+      summary: 'Get check result by ID',
+      description: 'Retrieve a previously executed compliance check result by its UUID. Check results are persisted after each `POST /check` call.',
       params: {
         type: 'object',
         properties: {

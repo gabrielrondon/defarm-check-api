@@ -7,7 +7,8 @@ export async function sourcesRoutes(app: FastifyInstance) {
   app.get('/sources', {
     schema: {
       tags: ['sources'],
-      description: 'List all checker sources',
+      summary: 'List all data sources',
+      description: 'Returns all registered compliance checkers with their category, status, and description. Useful for discovering which data sources are active and what input types they support.',
       response: {
         200: {
           type: 'array',
@@ -42,7 +43,8 @@ export async function sourcesRoutes(app: FastifyInstance) {
   app.get('/sources/:category', {
     schema: {
       tags: ['sources'],
-      description: 'List sources by category',
+      summary: 'List sources by category',
+      description: 'Filter checkers by category. Valid categories: `environmental` (deforestation, protected areas), `social` (slave labor, sanctions), `legal` (CAR, livestock registry).',
       params: {
         type: 'object',
         properties: {

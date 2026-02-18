@@ -83,7 +83,76 @@ export async function healthRoutes(app: FastifyInstance) {
   app.get('/health', {
     schema: {
       tags: ['health'],
-      description: 'Health check endpoint with data freshness information'
+      summary: 'Health check',
+      description: `Returns the operational status of all services and data source freshness.
+
+**Status values:**
+- \`ok\`: All services healthy, data is fresh
+- \`degraded\`: Services up but one or more data sources are stale
+- \`down\`: Database or Redis is unavailable
+
+**Data freshness thresholds:**
+- DETER: fresh < 48h, stale > 96h (daily updates)
+- IBAMA: fresh < 168h, stale > 336h (weekly updates)
+- Lista Suja: fresh < 720h, stale > 1440h (monthly updates)
+- PRODES: fresh < 2160h, stale > 4320h (annual updates)`,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', enum: ['ok', 'degraded', 'down'], example: 'ok' },
+            timestamp: { type: 'string', format: 'date-time' },
+            version: { type: 'string', example: '1.0.0' },
+            services: {
+              type: 'object',
+              properties: {
+                database: { type: 'string', enum: ['ok', 'down'], example: 'ok' },
+                redis: { type: 'string', enum: ['ok', 'down'], example: 'ok' }
+              }
+            },
+            dataSources: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', example: 'PRODES Deforestation' },
+                  lastUpdated: { type: 'string', format: 'date-time', nullable: true },
+                  hoursSinceUpdate: { type: 'integer', nullable: true, example: 48 },
+                  freshnessStatus: {
+                    type: 'string',
+                    enum: ['fresh', 'warning', 'stale', 'never_updated'],
+                    example: 'fresh'
+                  },
+                  totalRecords: { type: 'integer', nullable: true, example: 216252 }
+                }
+              }
+            },
+            tableCounts: {
+              type: 'object',
+              nullable: true,
+              properties: {
+                lista_suja: { type: 'integer', example: 678 },
+                ibama_embargoes: { type: 'integer', example: 65953 },
+                deter_alerts: { type: 'integer', example: 1200 },
+                terras_indigenas: { type: 'integer', example: 740 },
+                unidades_conservacao: { type: 'integer', example: 334 },
+                prodes_deforestation: { type: 'integer', example: 216252 },
+                car_registrations: { type: 'integer', example: 3544068 }
+              }
+            }
+          }
+        },
+        503: {
+          type: 'object',
+          description: 'Service unavailable — database or Redis is down',
+          properties: {
+            status: { type: 'string', enum: ['down', 'degraded'], example: 'down' },
+            timestamp: { type: 'string', format: 'date-time' },
+            version: { type: 'string' },
+            services: { type: 'object' }
+          }
+        }
+      }
     }
   }, async (request, reply) => {
     // Check database

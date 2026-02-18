@@ -12,13 +12,67 @@ import { FastifyPluginAsync } from 'fastify';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 
+// Reusable schema fragment for a sample item with a testUrl
+const sampleWithTestUrl = {
+  type: 'object',
+  properties: {
+    testUrl: {
+      type: 'string',
+      description: 'Ready-to-use POST /check request body snippet for this sample'
+    }
+  }
+};
+
+const sampleCoordinatesSchema = {
+  type: 'object',
+  properties: {
+    lat: { type: 'number', description: 'Latitude (WGS84)', example: -9.3748 },
+    lon: { type: 'number', description: 'Longitude (WGS84)', example: -68.2104 }
+  }
+};
+
 const samplesRoutes: FastifyPluginAsync = async (fastify) => {
 
   /**
    * GET /samples/lista-suja
    * Retorna exemplos de CPF/CNPJ na Lista Suja
    */
-  fastify.get('/samples/lista-suja', async (request, reply) => {
+  fastify.get('/samples/lista-suja', {
+    schema: {
+      tags: ['samples'],
+      summary: 'Sample: Slave Labor Registry (Lista Suja)',
+      description: `Returns up to 10 random CPF/CNPJ records currently listed in the **Lista Suja do Trabalho Escravo** (MTE Slave Labor Registry).
+
+Use these documents to verify that the \`/check\` endpoint correctly flags them as **FAIL** for slave labor violations.
+
+Each sample includes a \`testUrl\` field with the exact request body to copy into \`POST /check\`.`,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            source: { type: 'string', example: 'Lista Suja do Trabalho Escravo (MTE)' },
+            count: { type: 'integer', example: 10 },
+            samples: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  document: { type: 'string', description: 'CPF or CNPJ (digits only)', example: '12345678000190' },
+                  documentFormatted: { type: 'string', description: 'Formatted document', example: '12.345.678/0001-90' },
+                  name: { type: 'string', description: 'Employer/company name', example: 'Fazenda Exemplo Ltda' },
+                  type: { type: 'string', enum: ['CPF', 'CNPJ'], example: 'CNPJ' },
+                  state: { type: 'string', example: 'PA' },
+                  year: { type: 'integer', example: 2023 },
+                  workersAffected: { type: 'integer', example: 12 },
+                  testUrl: { type: 'string', example: 'POST /check {"input":{"type":"CNPJ","value":"12345678000190"}}' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const result = await db.execute(sql`
       SELECT
         document,
@@ -53,7 +107,38 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
    * GET /samples/ibama
    * Retorna exemplos de CPF/CNPJ com embargos IBAMA
    */
-  fastify.get('/samples/ibama', async (request, reply) => {
+  fastify.get('/samples/ibama', {
+    schema: {
+      tags: ['samples'],
+      summary: 'Sample: IBAMA Environmental Embargoes',
+      description: `Returns up to 10 CPF/CNPJ records with active **IBAMA environmental embargoes**, sorted by embargo count (most embargoes first).
+
+Use these documents to verify that the \`/check\` endpoint correctly flags them as **FAIL** for IBAMA violations.`,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            source: { type: 'string', example: 'IBAMA Embargoes' },
+            count: { type: 'integer', example: 10 },
+            samples: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  document: { type: 'string', description: 'CPF or CNPJ (digits only)', example: '98765432000199' },
+                  type: { type: 'string', enum: ['CPF', 'CNPJ'], example: 'CNPJ' },
+                  name: { type: 'string', example: 'Madeireira Fictícia SA' },
+                  embargoCount: { type: 'integer', description: 'Number of active embargoes', example: 3 },
+                  totalAreaHa: { type: 'number', description: 'Total embargoed area in hectares', example: 1250.5 },
+                  testUrl: { type: 'string' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const result = await db.execute(sql`
       SELECT
         document,
@@ -85,7 +170,45 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
    * GET /samples/cgu-sancoes
    * Retorna exemplos de CPF/CNPJ com sanções CGU (CEIS, CNEP, CEAF)
    */
-  fastify.get('/samples/cgu-sancoes', async (request, reply) => {
+  fastify.get('/samples/cgu-sancoes', {
+    schema: {
+      tags: ['samples'],
+      summary: 'Sample: CGU Sanctions (CEIS, CNEP, CEAF)',
+      description: `Returns up to 10 CPF/CNPJ records with **active CGU sanctions** from the Federal Transparency Portal registers:
+- **CEIS** — Companies/individuals ineligible for federal contracts
+- **CNEP** — National register of punished companies
+- **CEAF** — Administrative misconduct
+
+Use these documents to test the CGU Sanctions checker.`,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            source: { type: 'string', example: 'CGU - Sanções (CEIS, CNEP, CEAF)' },
+            count: { type: 'integer', example: 10 },
+            samples: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  document: { type: 'string', example: '11222333000181' },
+                  documentFormatted: { type: 'string', example: '11.222.333/0001-81' },
+                  name: { type: 'string', example: 'Empresa Sancionada Ltda' },
+                  type: { type: 'string', enum: ['CPF', 'CNPJ'], example: 'CNPJ' },
+                  sanctionType: { type: 'string', example: 'CEIS' },
+                  category: { type: 'string', example: 'Inidoneidade' },
+                  status: { type: 'string', example: 'ATIVO' },
+                  startDate: { type: 'string', format: 'date', example: '2022-05-01' },
+                  endDate: { type: 'string', format: 'date', nullable: true, example: '2027-05-01' },
+                  testUrl: { type: 'string' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const result = await db.execute(sql`
       SELECT
         document,
@@ -125,7 +248,42 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
    * GET /samples/terras-indigenas
    * Retorna coordenadas dentro de Terras Indígenas
    */
-  fastify.get('/samples/terras-indigenas', async (request, reply) => {
+  fastify.get('/samples/terras-indigenas', {
+    schema: {
+      tags: ['samples'],
+      summary: 'Sample: Indigenous Lands coordinates (Terras Indígenas)',
+      description: `Returns up to 10 coordinate pairs located **inside officially demarcated indigenous lands** (FUNAI).
+
+Use these coordinates to verify that the \`/check\` endpoint correctly flags them as **FAIL** for indigenous land violations.
+
+Pass the coordinates as \`POST /check\` with \`"type":"COORDINATES"\`.`,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            source: { type: 'string', example: 'Terras Indígenas (FUNAI)' },
+            count: { type: 'integer', example: 10 },
+            samples: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', description: 'Indigenous land name', example: 'Kayapó' },
+                  etnia: { type: 'string', description: 'Indigenous ethnicity', example: 'Kayapó' },
+                  phase: { type: 'string', description: 'Demarcation phase', example: 'Homologada' },
+                  areaHa: { type: 'number', description: 'Area in hectares', example: 3284480 },
+                  municipality: { type: 'string', example: 'Altamira' },
+                  state: { type: 'string', example: 'PA' },
+                  coordinates: sampleCoordinatesSchema,
+                  testUrl: { type: 'string' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const result = await db.execute(sql`
       SELECT
         name,
@@ -165,7 +323,44 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
    * GET /samples/unidades-conservacao
    * Retorna coordenadas dentro de Unidades de Conservação
    */
-  fastify.get('/samples/unidades-conservacao', async (request, reply) => {
+  fastify.get('/samples/unidades-conservacao', {
+    schema: {
+      tags: ['samples'],
+      summary: 'Sample: Conservation Units coordinates (Unidades de Conservação)',
+      description: `Returns up to 10 coordinate pairs located **inside conservation units** (ICMBio).
+
+Includes both Integral Protection units (Proteção Integral) and Sustainable Use units (Uso Sustentável).
+
+Use these coordinates to verify that the \`/check\` endpoint correctly flags them as **FAIL** or **WARNING** for conservation unit violations.`,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            source: { type: 'string', example: 'Unidades de Conservação (ICMBio)' },
+            count: { type: 'integer', example: 10 },
+            message: { type: 'string', nullable: true, description: 'Informational message if data is unavailable' },
+            samples: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', example: 'Parque Nacional do Araguaia' },
+                  category: { type: 'string', example: 'Parque Nacional' },
+                  group: { type: 'string', enum: ['Proteção Integral', 'Uso Sustentável'], example: 'Proteção Integral' },
+                  areaHa: { type: 'number', example: 555000 },
+                  municipality: { type: 'string', example: 'Bandeirantes do Tocantins' },
+                  state: { type: 'string', example: 'TO' },
+                  sphere: { type: 'string', enum: ['Federal', 'Estadual', 'Municipal'], example: 'Federal' },
+                  coordinates: sampleCoordinatesSchema,
+                  testUrl: { type: 'string' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const result = await db.execute(sql`
       SELECT
         name,
@@ -210,7 +405,43 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
    * GET /samples/deter
    * Retorna coordenadas com alertas DETER recentes
    */
-  fastify.get('/samples/deter', async (request, reply) => {
+  fastify.get('/samples/deter', {
+    schema: {
+      tags: ['samples'],
+      summary: 'Sample: DETER real-time deforestation alerts',
+      description: `Returns up to 10 coordinate pairs from **DETER real-time deforestation alerts** (INPE) from the last 90 days.
+
+DETER (Detection of Deforestation in Real-Time) provides near-daily monitoring of the Amazon and Cerrado biomes.
+
+Use these coordinates to verify that the \`/check\` endpoint correctly detects active deforestation events.`,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            source: { type: 'string', example: 'DETER Real-Time Alerts (INPE)' },
+            count: { type: 'integer', example: 10 },
+            message: { type: 'string', nullable: true },
+            samples: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  alertDate: { type: 'string', format: 'date', description: 'Detection date', example: '2026-01-15' },
+                  areaHa: { type: 'number', description: 'Alert area in hectares', example: 34.7 },
+                  municipality: { type: 'string', example: 'Novo Progresso' },
+                  state: { type: 'string', example: 'PA' },
+                  classname: { type: 'string', description: 'Alert class (e.g. DESMATAMENTO_VEG)', example: 'DESMATAMENTO_VEG' },
+                  sensor: { type: 'string', description: 'Satellite sensor used', example: 'CBERS4A' },
+                  coordinates: sampleCoordinatesSchema,
+                  testUrl: { type: 'string' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const result = await db.execute(sql`
       SELECT
         alert_date,
@@ -255,7 +486,47 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
    * Retorna coordenadas com CAR cancelado/suspenso
    * Status codes: CA (Cancelado), SU (Suspenso), PE (Pendente), AT (Ativo)
    */
-  fastify.get('/samples/car', async (request, reply) => {
+  fastify.get('/samples/car', {
+    schema: {
+      tags: ['samples'],
+      summary: 'Sample: CAR with irregular status (cancelled/suspended)',
+      description: `Returns up to 10 CAR (Cadastro Ambiental Rural) registrations with **irregular status** — cancelled (CA), suspended (SU), or pending (PE).
+
+Use the \`carNumber\` to test the CAR checker via \`POST /check\` with \`"type":"CAR"\`, which checks for irregular status and potential PRODES deforestation overlap.
+
+**Status codes:**
+- \`CA\` — Cancelado (Cancelled): registration was annulled
+- \`SU\` — Suspenso (Suspended): temporarily suspended
+- \`PE\` — Pendente (Pending): awaiting regularization
+- \`AT\` — Ativo (Active): regular status`,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            source: { type: 'string', example: 'CAR - Cadastro Ambiental Rural (SICAR)' },
+            count: { type: 'integer', example: 10 },
+            message: { type: 'string', nullable: true },
+            samples: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  carNumber: { type: 'string', description: 'CAR registration number', example: 'MT-5100250-XXXXXXXXXXXXXXXX' },
+                  status: { type: 'string', enum: ['CA', 'SU', 'PE', 'AT'], example: 'CA' },
+                  statusDescription: { type: 'string', example: 'CANCELADO' },
+                  areaHa: { type: 'number', example: 120.5 },
+                  municipality: { type: 'string', example: 'Sinop' },
+                  state: { type: 'string', example: 'MT' },
+                  coordinates: sampleCoordinatesSchema,
+                  testUrl: { type: 'string' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const result = await db.execute(sql`
       SELECT
         car_number,
@@ -338,7 +609,41 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
    * GET /samples/prodes
    * Retorna coordenadas com desmatamento PRODES
    */
-  fastify.get('/samples/prodes', async (request, reply) => {
+  fastify.get('/samples/prodes', {
+    schema: {
+      tags: ['samples'],
+      summary: 'Sample: PRODES deforestation polygons',
+      description: `Returns up to 10 coordinate pairs located **inside PRODES deforestation polygons** (INPE), sorted by most recent year and largest area.
+
+PRODES (Monitoring of the Brazilian Amazon Forest by Satellite) is the official annual deforestation monitoring system for all Brazilian biomes.
+
+Use these coordinates to verify that the \`/check\` endpoint correctly detects deforestation using the PRODES checker.`,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            source: { type: 'string', example: 'PRODES Deforestation (INPE)' },
+            count: { type: 'integer', example: 10 },
+            samples: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  areaHa: { type: 'number', description: 'Deforested area in hectares', example: 250.3 },
+                  year: { type: 'integer', description: 'Year of deforestation detection', example: 2024 },
+                  municipality: { type: 'string', example: 'São Félix do Xingu' },
+                  state: { type: 'string', example: 'PA' },
+                  pathRow: { type: 'string', description: 'Landsat path/row', example: '224/062' },
+                  coordinates: sampleCoordinatesSchema,
+                  testUrl: { type: 'string' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const result = await db.execute(sql`
       SELECT
         area_ha,
@@ -376,7 +681,57 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
    * GET /samples/snap
    * Retorna coordenadas dentro de áreas protegidas SNAP (Uruguay)
    */
-  fastify.get('/samples/snap', async (request, reply) => {
+  fastify.get('/samples/snap', {
+    schema: {
+      tags: ['samples'],
+      summary: 'Sample: SNAP protected areas coordinates (Uruguay)',
+      description: `Returns up to 10 coordinate pairs located **inside Uruguay's SNAP protected areas** (Sistema Nacional de Áreas Protegidas).
+
+Managed by MVOTMA (Ministry of Environment), SNAP covers national parks, nature reserves, and protected landscapes across Uruguay.
+
+Use these coordinates with \`"country":"UY"\` to verify the SNAP checker flags them as **FAIL** for protected area violations.
+
+**Example request:**
+\`\`\`json
+POST /check
+{
+  "input": {
+    "type": "COORDINATES",
+    "value": { "lat": -34.4711, "lon": -56.1945 },
+    "country": "UY"
+  }
+}
+\`\`\``,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            source: { type: 'string', example: 'SNAP - Sistema Nacional de Áreas Protegidas (Uruguay)' },
+            country: { type: 'string', example: 'UY' },
+            count: { type: 'integer', example: 10 },
+            message: { type: 'string', nullable: true },
+            samples: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', description: 'Protected area name', example: 'Parque Nacional Cabo Polonio' },
+                  category: { type: 'string', description: 'SNAP category', example: 'Parque Nacional' },
+                  areaHa: { type: 'number', example: 7900 },
+                  department: { type: 'string', example: 'Rocha' },
+                  municipality: { type: 'string', nullable: true },
+                  legalStatus: { type: 'string', example: 'Vigente' },
+                  establishedDate: { type: 'string', nullable: true },
+                  coordinates: sampleCoordinatesSchema,
+                  testUrl: { type: 'string', example: 'POST /check {"input":{"type":"COORDINATES","value":{"lat":-34.4711,"lon":-56.1945},"country":"UY"}}' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const result = await db.execute(sql`
       SELECT
         name,
@@ -422,7 +777,64 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
    * GET /samples/dicose
    * Retorna RUC/CI com declarações DICOSE (Uruguay)
    */
-  fastify.get('/samples/dicose', async (request, reply) => {
+  fastify.get('/samples/dicose', {
+    schema: {
+      tags: ['samples'],
+      summary: 'Sample: DICOSE livestock registry (Uruguay)',
+      description: `Returns up to 10 Uruguayan producer documents (RUC or CI) with **DICOSE declarations** from the last 2 years.
+
+DICOSE (Declaración Jurada de Existencias de Ganado) is Uruguay's official livestock census managed by MGAP. It registers all livestock establishments and their bovine, ovine, and equine counts.
+
+Producers appearing in DICOSE are considered **registered/compliant** — this is a **positive** indicator. Missing declarations may indicate non-compliance.
+
+**Document types:**
+- **RUC** — Registro Único de Contribuyentes (12 digits): company/corporate tax ID
+- **CI** — Cédula de Identidad (7–8 digits): individual national ID
+
+**Example request:**
+\`\`\`json
+POST /check
+{
+  "input": {
+    "type": "RUC",
+    "value": "210000000001",
+    "country": "UY"
+  }
+}
+\`\`\``,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            source: { type: 'string', example: 'DICOSE - Rural/Livestock Registry (Uruguay)' },
+            country: { type: 'string', example: 'UY' },
+            count: { type: 'integer', example: 10 },
+            message: { type: 'string', nullable: true },
+            samples: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  document: { type: 'string', description: 'RUC (12 digits) or CI (7-8 digits)', example: '210000000001' },
+                  documentType: { type: 'string', enum: ['RUC', 'CI'], example: 'RUC' },
+                  producerName: { type: 'string', nullable: true, example: 'Estancia El Ombú' },
+                  establishmentId: { type: 'string', nullable: true, description: 'DICOSE establishment identifier', example: 'D-12345' },
+                  year: { type: 'integer', example: 2024 },
+                  areaHa: { type: 'number', nullable: true, description: 'Declared land area in hectares', example: 850.0 },
+                  department: { type: 'string', nullable: true, example: 'Tacuarembó' },
+                  section: { type: 'string', nullable: true, description: 'Cadastral section', example: '3' },
+                  activity: { type: 'string', nullable: true, example: 'Ganadería' },
+                  livestockSummary: { type: 'string', description: 'Summary of declared livestock', example: '500 bovinos, 200 ovinos' },
+                  declarationStatus: { type: 'string', nullable: true, example: 'PRESENTADA' },
+                  testUrl: { type: 'string', example: 'POST /check {"input":{"type":"RUC","value":"210000000001","country":"UY"}}' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     const result = await db.execute(sql`
       SELECT
         producer_document,
@@ -488,7 +900,39 @@ const samplesRoutes: FastifyPluginAsync = async (fastify) => {
    * GET /samples/all
    * Retorna um exemplo de cada fonte (útil para overview)
    */
-  fastify.get('/samples/all', async (request, reply) => {
+  fastify.get('/samples/all', {
+    schema: {
+      tags: ['samples'],
+      summary: 'Sample: One example from each data source',
+      description: `Returns a single random sample from **every available data source** — both Brazil and Uruguay.
+
+Useful for:
+- Quick end-to-end smoke testing across all checkers
+- Verifying that all data sources have been seeded
+- Frontend demo pages showing live data
+
+Each result includes a \`testUrl\` with the exact request body to copy into \`POST /check\`.
+
+**Brazil sources:** listaSuja, ibama, terrasIndigenas, unidadesConservacao, deter, car, prodes
+**Uruguay sources:** snap, dicose`,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            listaSuja: { type: 'object', nullable: true, description: 'Lista Suja sample (Brazil)' },
+            ibama: { type: 'object', nullable: true, description: 'IBAMA embargo sample (Brazil)' },
+            terrasIndigenas: { type: 'object', nullable: true, description: 'Indigenous land coordinates (Brazil)' },
+            unidadesConservacao: { type: 'object', nullable: true, description: 'Conservation unit coordinates (Brazil)' },
+            deter: { type: 'object', nullable: true, description: 'DETER real-time alert coordinates (Brazil)' },
+            car: { type: 'object', nullable: true, description: 'Irregular CAR registration (Brazil)' },
+            prodes: { type: 'object', nullable: true, description: 'PRODES deforestation coordinates (Brazil)' },
+            snap: { type: 'object', nullable: true, description: 'SNAP protected area coordinates (Uruguay)' },
+            dicose: { type: 'object', nullable: true, description: 'DICOSE livestock registration (Uruguay)' }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
     // Lista Suja
     const listaSuja = await db.execute(sql`
       SELECT document, name, type
