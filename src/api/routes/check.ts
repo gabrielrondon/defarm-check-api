@@ -19,8 +19,9 @@ export async function checkRoutes(app: FastifyInstance) {
             type: 'object',
             required: ['type', 'value'],
             properties: {
-              type: { type: 'string', enum: ['CNPJ', 'CPF', 'CAR', 'IE', 'COORDINATES', 'ADDRESS'] },
-              value: { oneOf: [{ type: 'string' }, { type: 'object' }] }
+              type: { type: 'string', enum: ['CNPJ', 'CPF', 'CAR', 'IE', 'RUC', 'CI', 'COORDINATES', 'ADDRESS', 'NAME'] },
+              value: { oneOf: [{ type: 'string' }, { type: 'object' }] },
+              country: { type: 'string', enum: ['BR', 'UY'] }
             }
           },
           options: {
