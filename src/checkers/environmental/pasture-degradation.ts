@@ -38,7 +38,7 @@ import { logger } from '../../utils/logger.js';
 // --- ORNL DAAC MODIS Subset API ---
 const ORNL_BASE_URL = 'https://modis.ornl.gov/rst/api/v1';
 const MODIS_PRODUCT = 'MOD13Q1'; // Terra Vegetation Indices, 16-Day, 250m
-const MODIS_BAND    = '_250m_16_days_NDVI';
+const MODIS_BAND    = '250m_16_days_NDVI';
 const SCALE_FACTOR  = 0.0001; // raw values × 0.0001 = NDVI (-1 to 1)
 
 // --- Biome-specific NDVI pasture benchmarks ---
@@ -61,18 +61,10 @@ const BIOME_NDVI_BENCHMARKS: Record<string, { healthy: number; moderate: number;
 };
 
 // --- API response types ---
+// Note: ORNL DAAC returns nrows/ncols at top-level, not inside a nested header
 interface OrnlSubset {
-  header: {
-    title: string;
-    latitude: number;
-    longitude: number;
-    nrows: number;
-    ncols: number;
-    cellsize: number;
-    ntime: number;
-    scale: string;
-    units: string;
-  };
+  nrows?: number;
+  ncols?: number;
   subset: Array<{
     modis_date: string;   // "A2024001" (year + day of year)
     calendar_date: string; // "2024-01-01"
@@ -86,6 +78,13 @@ interface OrnlSubset {
 }
 
 // --- Checker ---
+
+/** Convert a JS Date to MODIS date format: A{year}{doy:03} */
+function toModisDate(d: Date): string {
+  const yearStart = new Date(d.getFullYear(), 0, 0);
+  const doy = Math.floor((d.getTime() - yearStart.getTime()) / 86400000);
+  return `A${d.getFullYear()}${String(doy).padStart(3, '0')}`;
+}
 
 export class PastureDegradationChecker extends SatelliteBaseChecker {
   readonly metadata: CheckerMetadata = {
@@ -210,6 +209,8 @@ export class PastureDegradationChecker extends SatelliteBaseChecker {
   }
 
   // --- Fetch NDVI time-series from ORNL DAAC MODIS Subset API (synchronous, no auth) ---
+  // ORNL DAAC limits: max 10 tiles per request for MOD13Q1 (16-day composites).
+  // 10 tiles × 16 days = 160 days. We cover ~1 year using up to 3 batches.
 
   private async fetchModisNdvi(lat: number, lon: number): Promise<{
     current: number | null;
@@ -220,40 +221,56 @@ export class PastureDegradationChecker extends SatelliteBaseChecker {
     latestDate: string | null;
     series: Array<{ date: string; ndvi: number }>;
   }> {
-    // Request last 3 years
-    const endDate   = new Date();
-    const startDate = new Date();
-    startDate.setFullYear(endDate.getFullYear() - 3);
+    const now        = new Date();
+    const oneYearAgo = new Date(now);
+    oneYearAgo.setFullYear(now.getFullYear() - 1);
 
-    // ORNL date format: YYYY-MM-DD
-    const fmt = (d: Date) => d.toISOString().split('T')[0];
+    // Build non-overlapping 160-day windows from oldest to newest
+    const BATCH_DAYS = 160;
+    const batches: Array<{ start: Date; end: Date }> = [];
+    let windowEnd = new Date(now);
 
-    const url = new URL(`${ORNL_BASE_URL}/${MODIS_PRODUCT}/subset`);
-    url.searchParams.set('latitude',  String(lat));
-    url.searchParams.set('longitude', String(lon));
-    url.searchParams.set('startDate', fmt(startDate));
-    url.searchParams.set('endDate',   fmt(endDate));
-    url.searchParams.set('kmAboveBelow', '0');
-    url.searchParams.set('kmLeftRight',  '0');
-    url.searchParams.set('band', MODIS_BAND);
-
-    const resp = await fetch(url.toString(), {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(15000)
-    });
-
-    if (!resp.ok) {
-      logger.warn({ status: resp.status, lat, lon }, 'ORNL MODIS API error');
-      return { current: null, mean: null, min: null, trend: null, observations: 0, latestDate: null, series: [] };
+    while (windowEnd > oneYearAgo) {
+      const windowStart = new Date(windowEnd);
+      windowStart.setDate(windowStart.getDate() - BATCH_DAYS);
+      if (windowStart < oneYearAgo) windowStart.setTime(oneYearAgo.getTime());
+      batches.unshift({ start: windowStart, end: new Date(windowEnd) });
+      windowEnd = new Date(windowStart);
+      windowEnd.setDate(windowEnd.getDate() - 1);
     }
 
-    const data = (await resp.json()) as OrnlSubset;
-    const subsets = data.subset ?? [];
+    const allSubsets: Array<{ calendar_date: string; data?: number[] }> = [];
 
-    // Extract center pixel NDVI values (pixel index = center of nrows×ncols grid)
-    const nrows = data.header?.nrows ?? 1;
-    const ncols = data.header?.ncols ?? 1;
-    const centerIdx = Math.floor((nrows * ncols) / 2);
+    for (const batch of batches) {
+      const url = new URL(`${ORNL_BASE_URL}/${MODIS_PRODUCT}/subset`);
+      url.searchParams.set('latitude',     String(lat));
+      url.searchParams.set('longitude',    String(lon));
+      url.searchParams.set('startDate',    toModisDate(batch.start));
+      url.searchParams.set('endDate',      toModisDate(batch.end));
+      url.searchParams.set('kmAboveBelow', '0');
+      url.searchParams.set('kmLeftRight',  '0');
+      url.searchParams.set('band',         MODIS_BAND);
+
+      try {
+        const resp = await fetch(url.toString(), {
+          headers: { Accept: 'application/json' },
+          signal:  AbortSignal.timeout(12000)
+        });
+        if (resp.ok) {
+          const data = (await resp.json()) as OrnlSubset;
+          allSubsets.push(...(data.subset ?? []));
+        } else {
+          logger.warn({ status: resp.status, lat, lon }, 'ORNL MODIS API error');
+        }
+      } catch {
+        // Non-fatal: skip batch on timeout or network error
+      }
+    }
+
+    const subsets = allSubsets;
+
+    // With kmAboveBelow=0 & kmLeftRight=0, 1×1 grid → pixel index 0
+    const centerIdx = 0;
 
     const series: Array<{ date: string; ndvi: number }> = [];
 

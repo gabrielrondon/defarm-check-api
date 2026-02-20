@@ -42,17 +42,26 @@ const RECOVERY_TREND_THRESHOLD    =  0.05; // +5 NDVI points = recovering
 
 const ORNL_BASE_URL = 'https://modis.ornl.gov/rst/api/v1';
 const MODIS_PRODUCT = 'MOD13Q1'; // Terra Vegetation Indices, 16-Day, 250m
-const MODIS_BAND    = '_250m_16_days_NDVI';
+const MODIS_BAND    = '250m_16_days_NDVI';
 const SCALE_FACTOR  = 0.0001; // raw values × 0.0001 = NDVI (-1 to 1)
 
 // --- ORNL DAAC API types ---
 
 interface OrnlSubset {
-  header?: { nrows?: number; ncols?: number };
+  // nrows/ncols are top-level fields (not nested in header)
+  nrows?: number;
+  ncols?: number;
   subset?: Array<{
     calendar_date: string;
     data?: number[];
   }>;
+}
+
+/** Convert a JS Date to MODIS date format: A{year}{doy:03} */
+function toModisDate(d: Date): string {
+  const yearStart = new Date(d.getFullYear(), 0, 0);
+  const doy = Math.floor((d.getTime() - yearStart.getTime()) / 86400000);
+  return `A${d.getFullYear()}${String(doy).padStart(3, '0')}`;
 }
 
 // --- Checker ---
@@ -130,52 +139,71 @@ export class NdviProductivityChecker extends SatelliteBaseChecker {
   }
 
   // --- Fetch NDVI time-series from ORNL DAAC (synchronous, no auth) ---
+  // ORNL DAAC limits: max 10 tiles per request for MOD13Q1 (16-day composites).
+  // 10 tiles × 16 days = 160 days. We cover ~1 year using 3 batches.
 
   private async fetchNdviSeries(lat: number, lon: number): Promise<{ date: string; ndvi: number }[]> {
-    const endDate   = new Date();
-    const startDate = new Date();
-    startDate.setFullYear(endDate.getFullYear() - 3);
+    const now        = new Date();
+    const oneYearAgo = new Date(now);
+    oneYearAgo.setFullYear(now.getFullYear() - 1);
 
-    const fmt = (d: Date) => d.toISOString().split('T')[0];
+    // Build non-overlapping 160-day windows from oldest to newest
+    const BATCH_DAYS = 160;
+    const batches: Array<{ start: Date; end: Date }> = [];
+    let windowEnd = new Date(now);
 
-    const url = new URL(`${ORNL_BASE_URL}/${MODIS_PRODUCT}/subset`);
-    url.searchParams.set('latitude',     String(lat));
-    url.searchParams.set('longitude',    String(lon));
-    url.searchParams.set('startDate',    fmt(startDate));
-    url.searchParams.set('endDate',      fmt(endDate));
-    url.searchParams.set('kmAboveBelow', '0');
-    url.searchParams.set('kmLeftRight',  '0');
-    url.searchParams.set('band',         MODIS_BAND);
-
-    const resp = await fetch(url.toString(), {
-      headers: { Accept: 'application/json' },
-      signal:  AbortSignal.timeout(20000)
-    });
-
-    if (!resp.ok) {
-      logger.warn({ status: resp.status, lat, lon }, 'ORNL MODIS MOD13Q1 API error');
-      return [];
+    while (windowEnd > oneYearAgo) {
+      const windowStart = new Date(windowEnd);
+      windowStart.setDate(windowStart.getDate() - BATCH_DAYS);
+      if (windowStart < oneYearAgo) windowStart.setTime(oneYearAgo.getTime());
+      batches.unshift({ start: windowStart, end: new Date(windowEnd) });
+      windowEnd = new Date(windowStart);
+      windowEnd.setDate(windowEnd.getDate() - 1);
     }
 
-    const data    = (await resp.json()) as OrnlSubset;
-    const subsets = data.subset ?? [];
+    const allSeries: Array<{ date: string; ndvi: number }> = [];
 
-    const nrows     = data.header?.nrows ?? 1;
-    const ncols     = data.header?.ncols ?? 1;
-    const centerIdx = Math.floor((nrows * ncols) / 2);
+    for (const batch of batches) {
+      const url = new URL(`${ORNL_BASE_URL}/${MODIS_PRODUCT}/subset`);
+      url.searchParams.set('latitude',     String(lat));
+      url.searchParams.set('longitude',    String(lon));
+      url.searchParams.set('startDate',    toModisDate(batch.start));
+      url.searchParams.set('endDate',      toModisDate(batch.end));
+      url.searchParams.set('kmAboveBelow', '0');
+      url.searchParams.set('kmLeftRight',  '0');
+      url.searchParams.set('band',         MODIS_BAND);
 
-    const series: Array<{ date: string; ndvi: number }> = [];
+      try {
+        const resp = await fetch(url.toString(), {
+          headers: { Accept: 'application/json' },
+          signal:  AbortSignal.timeout(12000)
+        });
+        if (!resp.ok) {
+          logger.warn({ status: resp.status, lat, lon }, 'ORNL MODIS MOD13Q1 API error');
+          continue;
+        }
 
-    for (const s of subsets) {
-      const rawVal = s.data?.[centerIdx];
-      if (rawVal == null || rawVal <= -3000) continue; // fill/no-data sentinel
-      const ndvi = rawVal * SCALE_FACTOR;
-      if (ndvi < -1 || ndvi > 1) continue; // out of valid range
-      series.push({ date: s.calendar_date, ndvi });
+        const data    = (await resp.json()) as OrnlSubset;
+        const subsets = data.subset ?? [];
+
+        // With kmAboveBelow=0 & kmLeftRight=0, response is a 1×1 grid → pixel index 0
+        for (const s of subsets) {
+          const rawVal = s.data?.[0];
+          if (rawVal == null || rawVal <= -3000) continue; // fill/no-data sentinel
+          const ndvi = rawVal * SCALE_FACTOR;
+          if (ndvi < -1 || ndvi > 1) continue; // out of valid range
+          allSeries.push({ date: s.calendar_date, ndvi });
+        }
+      } catch {
+        // Non-fatal: skip batch on timeout or network error
+      }
     }
 
-    series.sort((a, b) => a.date.localeCompare(b.date));
-    return series;
+    // Deduplicate and sort by date
+    const seen = new Set<string>();
+    return allSeries
+      .filter(s => !seen.has(s.date) && seen.add(s.date))
+      .sort((a, b) => a.date.localeCompare(b.date));
   }
 
   // --- Analyze NDVI series and build result ---
