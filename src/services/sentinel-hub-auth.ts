@@ -127,8 +127,8 @@ async function _doStats(req: SHStatsRequest, retry: boolean): Promise<SHStatsRes
       timeRange:           { from: req.fromDate, to: req.toDate },
       aggregationInterval: { of: `P${req.intervalDays}D` },
       evalscript:          req.evalscript,
-      resx:                10,
-      resy:                10
+      resx:                0.0001,  // WGS84 degrees (~11m at tropical latitudes)
+      resy:                0.0001
     },
     calculations: { [req.outputId]: {} }
   };
@@ -159,8 +159,9 @@ async function _doStats(req: SHStatsRequest, retry: boolean): Promise<SHStatsRes
 
 /**
  * Returns true if a GeoJSON polygon's bounding box exceeds the Sentinel Hub
- * Statistical API resolution limit (~1500 m/px at resx=10).
- * Approximate limit: bbox > 0.5° on any axis (≈ 55 km) is too large.
+ * Statistical API pixel limit.
+ * At resx=0.0001°/px, max 2500px: 2500 × 0.0001° = 0.25°. We use 0.2° as a
+ * safe threshold (≈ 22 km per side, 2000 pixels).
  * For such polygons, use the centroid + pointToPolygon instead.
  */
 export function geometryExceedsSentinelLimit(geometry: SHGeometry): boolean {
@@ -175,7 +176,7 @@ export function geometryExceedsSentinelLimit(geometry: SHGeometry): boolean {
   const lats = coords.map(c => c[1]);
   const lonSpan = Math.max(...lons) - Math.min(...lons);
   const latSpan = Math.max(...lats) - Math.min(...lats);
-  return lonSpan > 0.5 || latSpan > 0.5; // > ~55 km on any side
+  return lonSpan > 0.2 || latSpan > 0.2; // > ~22 km on any side → 2000px at 0.0001°/px
 }
 
 /**
