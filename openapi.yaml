@@ -28,16 +28,24 @@ info:
     - MapBiomas Alerta - Alertas de desmatamento validados + inteligência territorial
     - Reserva Legal Compliance (MapBiomas) - Conformidade da Reserva Legal via cruzamento CAR
     - Land Use Conversion History (MapBiomas Collection) - Trajetória uso do solo 1985-2024 + corte temporal Código Florestal
-    - NDVI Productivity (NASA MODIS) - Índice de produtividade da pastagem/vegetação
-    - Pasture Degradation Index (ORNL DAAC MODIS) - Degradação de pastagem via NDVI + queimadas
-    - Grazing Pattern Analyzer (NASA MODIS) - Detecta eventos de pastejo, tempo de recuperação e regularidade de rotação via série temporal NDVI
+    - NDVI Productivity (NASA MODIS) - Índice de produtividade da pastagem/vegetação 🌍 global
+    - Pasture Degradation Index (ORNL DAAC MODIS) - Degradação de pastagem via NDVI + queimadas 🌍 global
+    - Grazing Pattern Analyzer (NASA MODIS) - Detecta eventos de pastejo, tempo de recuperação e regularidade de rotação 🌍 global
+    - Fire Scar Mapping (MODIS MCD64A1) - Cicatrizes de incêndio confirmadas por satélite 🌍 global
+    - Carbon Stock Estimation (MODIS MOD44B) - Estimativa de biomassa e carbono estocado 🌍 global
+    - Productivity vs Regional Benchmark (MODIS MOD17A3HGF) - NPP vs benchmark do bioma 🌍 global
+    - Phenology & Crop Cycles (MODIS MCD12Q2) - Ciclos agrícolas e fenologia 🌍 global
+    - Water Body Monitoring (MODIS MCD12Q1) - Monitoramento de corpos d'água 🌍 global
+    - Soil Erosion Risk (Sentinel-2 BSI) - Risco de erosão e solo exposto 🌍 global
+    - Irrigation Detection (Sentinel-2 NDMI) - Irrigação na estação seca 🌍 global
+    - Crop Mapping (Sentinel-2 NDVI) - Classificação de cobertura e ciclos agrícolas 🌍 global
 
     **Fontes de dados - Uruguai:**
     - SNAP - Sistema Nacional de Áreas Protegidas (MVOTMA)
     - DICOSE - Registro Rural/Pecuário (MGAP)
 
     **Documentação completa:** https://github.com/gabrielrondon/defarm-check-api
-  version: 2.8.0
+  version: 2.9.0
   contact:
     name: DeFarm Support
     email: suporte@defarm.com
@@ -88,7 +96,7 @@ paths:
 
         ## 🔍 Checkers Executados Automaticamente
 
-        A API executa até **26 checkers** em paralelo, dependendo do tipo de input:
+        A API executa até **29 checkers** em paralelo, dependendo do tipo de input:
 
         ### Social & Legal (CNPJ/CPF)
         - **Slave Labor Registry**: Lista Suja do Trabalho Escravo (MTE)
@@ -118,7 +126,7 @@ paths:
         - **Irrigation Detection (Sentinel-2 NDMI)**: NDMI Sentinel-2 L2A (10m) — detecta irrigação na estação seca e cruza com outorgas ANA
         - **Crop Mapping (Sentinel-2 NDVI)**: Séries temporais NDVI Sentinel-2 (10m, 16-day) — classifica cobertura, detecta dupla safra e expansão agrícola
 
-        ### Environmental - Spatial (COORDINATES/ADDRESS)
+        ### Environmental - Spatial (COORDINATES/ADDRESS) 🌎 Brasil only
         - **PRODES Deforestation**: Verifica se coordenadas caem em polígono de desmatamento histórico
         - **DETER Real-Time Alerts**: Alertas de desmatamento em tempo real (últimos 90 dias)
         - **Indigenous Lands**: Verifica sobreposição com Terras Indígenas (FUNAI)
@@ -126,16 +134,19 @@ paths:
         - **IBAMA Embargoes (Spatial)**: Embargos em buffer de 5km das coordenadas
         - **MapBiomas Territory Intelligence**: Alertas de desmatamento validados próximos às coordenadas + contexto territorial
         - **Land Use Conversion History (MapBiomas)**: Trajetória histórica de uso do solo para o ponto (1985–2024)
-        - **Productivity vs Regional Benchmark (MODIS NPP)**: NPP da localização vs benchmark do bioma
+        - **INPE Fire Hotspots**: Focos de calor próximos às coordenadas
+        - **ANA Water Use Permits**: Outorgas próximas às coordenadas
+
+        ### Environmental - Satellite (COORDINATES) 🌍 Todos os países (BR, UY, AR, PY, BO, CL, CO, PE)
+        > Checkers baseados em dados globais de satélite — funcionam para qualquer coordenada nos 8 países suportados.
+        - **NDVI Productivity (MODIS)**: Produtividade NDVI para coordenadas (ORNL DAAC MOD13Q1, 250m)
+        - **Pasture Degradation Index (MODIS)**: Degradação de pastagem via NDVI MODIS + focos de queimada (PQI 0-100)
+        - **Grazing Pattern Analyzer (MODIS)**: Detecta eventos de pastejo, tempo de recuperação e regularidade de rotação via série temporal NDVI
+        - **Productivity vs Regional Benchmark (MODIS NPP)**: NPP da localização vs benchmark do bioma (MOD17A3HGF, 500m)
         - **Fire Scar Mapping (MODIS MCD64A1)**: Cicatrizes de incêndio confirmadas por satélite
         - **Phenology & Crop Cycles (MODIS)**: Ciclos de vegetação, fenologia e detecção de mudança de uso
         - **Carbon Stock Estimation (MODIS VCF)**: Estimativa de biomassa e carbono estocado
         - **Water Body Monitoring (MODIS)**: Monitoramento de corpos d'água e áreas úmidas
-        - **Pasture Degradation Index (MODIS)**: Degradação de pastagem via NDVI para coordenadas
-        - **NDVI Productivity (MODIS)**: Produtividade NDVI para coordenadas
-        - **Grazing Pattern Analyzer (MODIS)**: Detecta eventos de pastejo, tempo de recuperação e regularidade de rotação via série temporal NDVI
-        - **INPE Fire Hotspots**: Focos de calor próximos às coordenadas
-        - **ANA Water Use Permits**: Outorgas próximas às coordenadas
         - **Soil Exposure & Erosion Risk (Sentinel-2)**: Solo exposto e risco de erosão via BSI Sentinel-2 (10m)
         - **Irrigation Detection (Sentinel-2 NDMI)**: Irrigação na estação seca via NDMI Sentinel-2 (10m)
         - **Crop Mapping (Sentinel-2 NDVI)**: Classificação de cobertura e ciclos agrícolas via NDVI Sentinel-2 (10m)
@@ -153,10 +164,10 @@ paths:
 
         | Checker Group | Env Var | Fallback |
         |---|---|---|
-        | MapBiomas Territory + Reserva Legal | `MAPBIOMAS_EMAIL` + `MAPBIOMAS_PASSWORD` | `NOT_APPLICABLE` |
-        | NDVI Productivity + Pasture Degradation | `NASA_EARTHDATA_TOKEN` | `NOT_APPLICABLE` |
+        | MapBiomas Territory + Reserva Legal + Land Use | `MAPBIOMAS_EMAIL` + `MAPBIOMAS_PASSWORD` | `NOT_APPLICABLE` |
         | Soil Erosion + Irrigation + Crop Mapping | `SENTINEL_HUB_CLIENT_ID` + `SENTINEL_HUB_CLIENT_SECRET` | `NOT_APPLICABLE` |
         | CGU Sanctions | `CGU_API_KEY` | `NOT_APPLICABLE` |
+        | All MODIS checkers (NDVI, Pasture, Grazing, Fire, Carbon, Phenology, Water, NPP) | — | Públicos via ORNL DAAC, sem autenticação |
         | All others | — | Públicos, sem credencial |
 
         ---
@@ -1770,7 +1781,7 @@ components:
 
                 **Universal:**
                 - **COORDINATES**: Coordenadas geográficas (lat/lon WGS84)
-                - **ADDRESS**: Endereço em texto livre (geocodificado automaticamente)
+                - **ADDRESS**: Endereço em texto livre em qualquer país (geocodificado automaticamente via Nominatim)
                 - **NAME**: Nome da empresa/produtor
             country:
               type: string
