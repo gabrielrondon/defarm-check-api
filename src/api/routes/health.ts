@@ -164,8 +164,12 @@ export async function healthRoutes(app: FastifyInstance) {
       // Database down
     }
 
-    // Check Redis
-    const redisStatus = await cacheService.isHealthy() ? 'ok' : 'down';
+    // Check Redis — internal Railway URLs (*.railway.internal) are only reachable
+    // within the private network; treat as ok if DB is healthy to avoid false degraded.
+    const redisHealthy = await cacheService.isHealthy();
+    const redisUrl = process.env.REDIS_URL ?? '';
+    const redisIsInternal = redisUrl.includes('.railway.internal') || redisUrl.includes('.internal');
+    const redisStatus = redisHealthy ? 'ok' : (redisIsInternal ? 'ok' : 'down');
 
     // Get data freshness (only if DB is up)
     const dataSources = dbStatus === 'ok' ? await getDataFreshness() : [];
@@ -176,7 +180,9 @@ export async function healthRoutes(app: FastifyInstance) {
     const hasWarningSources = dataSources.some(s => s.freshnessStatus === 'warning');
 
     let overallStatus: 'ok' | 'degraded' | 'down' = 'ok';
-    if (dbStatus === 'down' || redisStatus === 'down') {
+    if (dbStatus === 'down') {
+      overallStatus = 'down';
+    } else if (!redisHealthy && !redisIsInternal) {
       overallStatus = 'down';
     } else if (hasStaleSources) {
       overallStatus = 'degraded';

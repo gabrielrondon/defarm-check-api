@@ -32,8 +32,30 @@ export class QueimadasChecker extends BaseChecker {
   };
 
   async executeCheck(input: NormalizedInput): Promise<CheckerResult> {
-    // Validate input has coordinates
-    if (!input.coordinates) {
+    // Resolve coordinates: direct for COORDINATES input, centroid for CAR input
+    let latitude: number;
+    let longitude: number;
+
+    if (input.coordinates) {
+      latitude  = input.coordinates.lat;
+      longitude = input.coordinates.lon;
+    } else if (input.type === InputType.CAR) {
+      const rows = await db.execute<{ lat: number; lon: number }>(sql`
+        SELECT ST_Y(ST_Centroid(geometry)) AS lat, ST_X(ST_Centroid(geometry)) AS lon
+        FROM car_registrations WHERE car_number = ${input.value} LIMIT 1
+      `);
+      const car = rows.rows?.[0];
+      if (!car?.lat) {
+        return {
+          status: CheckStatus.NOT_APPLICABLE,
+          message: `CAR ${input.value} not found in local database`,
+          executionTimeMs: 0,
+          cached: false
+        };
+      }
+      latitude  = car.lat;
+      longitude = car.lon;
+    } else {
       return {
         status: CheckStatus.ERROR,
         message: 'Coordenadas não fornecidas para verificação de queimadas',
@@ -41,8 +63,6 @@ export class QueimadasChecker extends BaseChecker {
         cached: false
       };
     }
-
-    const { lat: latitude, lon: longitude } = input.coordinates;
     const buffer = 1000; // Default 1km buffer
 
     // Query fire hotspots within buffer distance (default 1km)
@@ -59,12 +79,12 @@ export class QueimadasChecker extends BaseChecker {
         biome,
         frp,
         ST_Distance(
-          geom::geography,
+          geometry::geography,
           ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography
         ) as distance_meters
       FROM queimadas_focos
       WHERE ST_DWithin(
-        geom::geography,
+        geometry::geography,
         ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography,
         ${buffer}
       )

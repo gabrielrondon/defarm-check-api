@@ -39,6 +39,7 @@ import {
   sentinelHubStats,
   pointToPolygon,
   extractMeanSeries,
+  geometryExceedsSentinelLimit,
   SHGeometry
 } from '../../services/sentinel-hub-auth.js';
 
@@ -246,8 +247,13 @@ export class SoilErosionRiskChecker extends SatelliteBaseChecker {
       `);
       const row = rows.rows?.[0];
       if (!row?.geojson) return { geometry: null, locationLabel: input.value };
+      let geometry = JSON.parse(row.geojson) as SHGeometry;
+      // Fall back to centroid bbox if polygon is too large for Sentinel Hub (>~55km)
+      if (geometryExceedsSentinelLimit(geometry)) {
+        geometry = pointToPolygon(row.lat, row.lon);
+      }
       return {
-        geometry: JSON.parse(row.geojson) as SHGeometry,
+        geometry,
         locationLabel: `CAR ${input.value} (${row.lat?.toFixed(4)},${row.lon?.toFixed(4)})`
       };
     }

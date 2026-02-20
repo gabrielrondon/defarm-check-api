@@ -62,13 +62,13 @@ export class AnaOutorgasChecker extends BaseChecker {
         data_vencimento,
         volume_anual_m3,
         ST_Distance(
-          geom::geography,
+          geometry::geography,
           ST_SetSRID(ST_MakePoint(${lon}, ${lat}), 4326)::geography
         ) as distance_meters
       FROM ana_outorgas
       WHERE
         ST_DWithin(
-          geom::geography,
+          geometry::geography,
           ST_SetSRID(ST_MakePoint(${lon}, ${lat}), 4326)::geography,
           ${radiusMeters}
         )
@@ -151,11 +151,11 @@ export class AnaOutorgasChecker extends BaseChecker {
     // Get CAR coordinates
     const carResult = await db.execute(sql`
       SELECT
-        ST_Y(ST_Centroid(geom::geometry)) as lat,
-        ST_X(ST_Centroid(geom::geometry)) as lon
+        ST_Y(ST_Centroid(geometry)) as lat,
+        ST_X(ST_Centroid(geometry)) as lon
       FROM car_registrations
       WHERE car_number = ${input.value}
-      AND geom IS NOT NULL
+      AND geometry IS NOT NULL
       LIMIT 1
     `);
 

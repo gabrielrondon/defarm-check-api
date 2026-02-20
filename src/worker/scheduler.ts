@@ -19,6 +19,9 @@ import { updateCAR } from './jobs/update-car.js';
 import { updateQueimadas } from './jobs/update-queimadas.js';
 import { checkDataFreshness } from './jobs/check-data-freshness.js';
 import { backupDatabase } from './jobs/backup-database.js';
+import { updateAnaOutorgas } from './jobs/update-ana-outorgas.js';
+import { updateMapaOrganicos } from './jobs/update-mapa-organicos.js';
+import { cleanupSatelliteCache } from './jobs/cleanup-satellite-cache.js';
 
 interface ScheduledJob {
   name: string;
@@ -80,6 +83,24 @@ const JOBS: ScheduledJob[] = [
     name: 'Data Freshness Check',
     schedule: '0 8 * * *',  // Diária, 08:00
     handler: checkDataFreshness,
+    enabled: true
+  },
+  {
+    name: 'ANA Outorgas',
+    schedule: '0 6 1 * *',  // Mensal (dia 1), 06:00
+    handler: updateAnaOutorgas,
+    enabled: true
+  },
+  {
+    name: 'MAPA Orgânicos',
+    schedule: '0 7 1 * *',  // Mensal (dia 1), 07:00
+    handler: updateMapaOrganicos,
+    enabled: true
+  },
+  {
+    name: 'Satellite Cache Cleanup',
+    schedule: '0 3 * * 0',  // Semanal (domingo), 03:00
+    handler: cleanupSatelliteCache,
     enabled: true
   },
   {

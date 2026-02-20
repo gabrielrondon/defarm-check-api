@@ -30,7 +30,7 @@ info:
     - DICOSE - Registro Rural/Pecuário (MGAP)
 
     **Documentação completa:** https://github.com/gabrielrondon/defarm-check-api
-  version: 2.7.0
+  version: 2.8.0
   contact:
     name: DeFarm Support
     email: suporte@defarm.com
@@ -98,7 +98,7 @@ paths:
         - **Reserva Legal Compliance (MapBiomas)**: Conformidade da Reserva Legal — cruza alertas de desmatamento com a RL declarada no CAR
         - **Land Use Conversion History (MapBiomas)**: Trajetória uso do solo 1985–2024 — detecta conversão de nativo para antrópico e corte temporal do Código Florestal
         - **Productivity vs Regional Benchmark (MODIS NPP)**: Compara NPP da propriedade com benchmark do bioma — detecta sub-utilização e abandono
-        - **Fire Scar Mapping (MODIS MCD64A1)**: Cicatrizes de incêndio confirmadas por satélite (últimos 5 anos, 500m)
+        - **Fire Scar Mapping (MODIS MCD64A1)**: Cicatrizes de incêndio confirmadas por satélite (últimos 3 anos, 500m)
         - **Phenology & Crop Cycles (MODIS)**: Detecta ciclos de plantio/colheita, dupla safra, irrigação e abandono via fenologia NDVI
         - **Carbon Stock Estimation (MODIS VCF)**: Estima AGB e CO2eq da propriedade via cobertura arbórea (MOD44B 250m)
         - **Water Body Monitoring (MODIS)**: Monitora corpos d'água e áreas úmidas — detecta desaparecimento e violação de APP
@@ -133,6 +133,22 @@ paths:
 
         ### Positive/Certification (CNPJ)
         - **MAPA Organic Certification**: Certificação orgânica (quando disponível)
+
+        ### Uruguay (RUC/CI)
+        - **SNAP Protected Areas**: Sobreposição com Sistema Nacional de Áreas Protegidas
+        - **DICOSE Rural Registry**: Registro de estabelecimento rural/pecuário
+
+        ---
+
+        ## 🔑 Credenciais Necessárias por Checker
+
+        | Checker Group | Env Var | Fallback |
+        |---|---|---|
+        | MapBiomas Territory + Reserva Legal | `MAPBIOMAS_EMAIL` + `MAPBIOMAS_PASSWORD` | `NOT_APPLICABLE` |
+        | NDVI Productivity + Pasture Degradation | `NASA_EARTHDATA_TOKEN` | `NOT_APPLICABLE` |
+        | Soil Erosion + Irrigation + Crop Mapping | `SENTINEL_HUB_CLIENT_ID` + `SENTINEL_HUB_CLIENT_SECRET` | `NOT_APPLICABLE` |
+        | CGU Sanctions | `CGU_API_KEY` | `NOT_APPLICABLE` |
+        | All others | — | Públicos, sem credencial |
 
         ---
 

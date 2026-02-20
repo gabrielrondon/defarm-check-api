@@ -158,6 +158,27 @@ async function _doStats(req: SHStatsRequest, retry: boolean): Promise<SHStatsRes
 }
 
 /**
+ * Returns true if a GeoJSON polygon's bounding box exceeds the Sentinel Hub
+ * Statistical API resolution limit (~1500 m/px at resx=10).
+ * Approximate limit: bbox > 0.5° on any axis (≈ 55 km) is too large.
+ * For such polygons, use the centroid + pointToPolygon instead.
+ */
+export function geometryExceedsSentinelLimit(geometry: SHGeometry): boolean {
+  let coords: number[][];
+  if (geometry.type === 'Polygon') {
+    coords = geometry.coordinates[0];
+  } else {
+    // MultiPolygon — use first ring of first polygon
+    coords = geometry.coordinates[0][0];
+  }
+  const lons = coords.map(c => c[0]);
+  const lats = coords.map(c => c[1]);
+  const lonSpan = Math.max(...lons) - Math.min(...lons);
+  const latSpan = Math.max(...lats) - Math.min(...lats);
+  return lonSpan > 0.5 || latSpan > 0.5; // > ~55 km on any side
+}
+
+/**
  * Creates a small square polygon around a point (for coordinate-based checks).
  * delta = 0.005° ≈ 550m at equator → ~0.3 km² area
  */

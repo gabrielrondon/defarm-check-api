@@ -16,12 +16,19 @@ interface DataSource {
 }
 
 const DATA_SOURCES: DataSource[] = [
-  { name: 'Lista Suja', table: 'lista_suja', slaMaxDays: 35 },
-  { name: 'IBAMA Embargoes', table: 'ibama_embargoes', slaMaxDays: 10 },
-  { name: 'DETER Alerts', table: 'deter_alerts', slaMaxDays: 2 },
-  { name: 'Terras Indígenas', table: 'terras_indigenas', slaMaxDays: 35 },
-  { name: 'Unidades de Conservação', table: 'unidades_conservacao', slaMaxDays: 35 },
-  { name: 'CAR', table: 'car_registrations', slaMaxDays: 35 }
+  { name: 'Lista Suja',               table: 'lista_suja',              slaMaxDays: 35  },
+  { name: 'IBAMA Embargoes',          table: 'ibama_embargoes',         slaMaxDays: 10  },
+  { name: 'DETER Alerts',             table: 'deter_alerts',            slaMaxDays: 2   },
+  { name: 'INPE Queimadas',           table: 'queimadas_focos',         slaMaxDays: 2   },
+  { name: 'Terras Indígenas',         table: 'terras_indigenas',        slaMaxDays: 90  },
+  { name: 'Unidades de Conservação',  table: 'unidades_conservacao',    slaMaxDays: 90  },
+  { name: 'CAR',                      table: 'car_registrations',       slaMaxDays: 35  },
+  { name: 'PRODES Deforestation',     table: 'prodes_deforestation',    slaMaxDays: 120 },
+  { name: 'MapBiomas Alerta',         table: 'mapbiomas_alerta',        slaMaxDays: 35  },
+  { name: 'ANA Outorgas',             table: 'ana_outorgas',            slaMaxDays: 35  },
+  { name: 'CGU Sanções',              table: 'cgu_sancoes',             slaMaxDays: 35  },
+  { name: 'MAPA Orgânicos',           table: 'mapa_organicos',          slaMaxDays: 35  },
+  { name: 'Satellite Cache',          table: 'satellite_checker_results', slaMaxDays: 7 }
 ];
 
 async function checkSourceFreshness(source: DataSource) {

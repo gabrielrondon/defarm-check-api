@@ -33,8 +33,8 @@ import { sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
 
 const ORNL_DAAC_BASE = 'https://modis.ornl.gov/rst/api/v1';
-const YEARS_TO_ANALYZE = 5;
-const MONTHS_PER_REQUEST = 10; // ORNL DAAC max tiles per request
+const YEARS_TO_ANALYZE = 3;  // Reduced from 5 to avoid timeout
+const MONTHS_PER_REQUEST = 5; // Smaller batches for reliability
 
 interface BurnEvent {
   year: number;
@@ -48,7 +48,7 @@ export class FireScarMappingChecker extends SatelliteBaseChecker {
     name: 'Fire Scar Mapping (MODIS MCD64A1)',
     category: CheckerCategory.ENVIRONMENTAL,
     description:
-      'Mapeia cicatrizes de incêndio históricas via MODIS MCD64A1 (Burned Area Monthly, 500m, 5 anos). ' +
+      'Mapeia cicatrizes de incêndio históricas via MODIS MCD64A1 (Burned Area Monthly, 500m, 3 anos). ' +
       'Detecta áreas queimadas confirmadas por satélite com data de ignição. ' +
       'Complementa o checker de focos ativos com histórico de queimadas.',
     priority: 3,
@@ -58,7 +58,7 @@ export class FireScarMappingChecker extends SatelliteBaseChecker {
   readonly config: CheckerConfig = {
     enabled: true,
     cacheTTL: 86400 * 7, // 7 days
-    timeout: 30000
+    timeout: 60000 // 60s — multiple ORNL batches
   };
 
   async executeCheck(input: NormalizedInput): Promise<CheckerResult> {
