@@ -403,6 +403,32 @@ export const apiKeysIdx = {
   isActiveIdx: 'idx_api_keys_is_active'
 };
 
+// Tabela REPSAL - Registro Público de Empleadores con Sanciones Laborales (Argentina)
+// Análogo à Lista Suja do Trabalho Escravo do Brasil (MTE)
+// Fonte: http://repsal.trabajo.gob.ar/Sancion/GenerarExcel
+export const repsalSanciones = pgTable('repsal_sanciones', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  cuit: varchar('cuit', { length: 11 }).notNull(),             // CUIT sem formatação (11 dígitos)
+  razonSocial: text('razon_social').notNull(),                 // Razão social do empregador
+  provincia: varchar('provincia', { length: 100 }),            // Província
+  localidad: varchar('localidad', { length: 100 }),            // Localidade
+  actividad: varchar('actividad', { length: 255 }),            // Atividade econômica
+  tipoInfraccion: text('tipo_infraccion'),                     // Tipo de infração laboral
+  empleadosRegistrados: integer('empleados_registrados'),      // Funcionários registrados
+  organismoSancionador: varchar('organismo_sancionador', { length: 255 }), // Órgão sancionador
+  organismoPublicador: varchar('organismo_publicador', { length: 255 }),   // Órgão publicador
+  fechaIngreso: varchar('fecha_ingreso', { length: 30 }),      // Data de entrada no REPSAL
+  finPublicacion: varchar('fin_publicacion', { length: 30 }),  // Data fim da publicação
+  numeroExpediente: varchar('numero_expediente', { length: 100 }),         // Nº expediente
+  country: varchar('country', { length: 2 }).default('AR').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
+export const repsalSancionesIdx = {
+  cuitIdx: 'idx_repsal_sanciones_cuit',
+  countryIdx: 'idx_repsal_sanciones_country'
+};
+
 // Cache persistente de resultados de satellite checkers
 // Armazena histórico completo + TTL gerenciado para evitar re-consultas desnecessárias
 export const satelliteCheckerResults = pgTable('satellite_checker_results', {

@@ -45,7 +45,7 @@ info:
     - DICOSE - Registro Rural/Pecuário (MGAP)
 
     **Documentação completa:** https://github.com/gabrielrondon/defarm-check-api
-  version: 2.9.0
+  version: 2.10.0
   contact:
     name: DeFarm Support
     email: suporte@defarm.com
@@ -96,7 +96,7 @@ paths:
 
         ## 🔍 Checkers Executados Automaticamente
 
-        A API executa até **29 checkers** em paralelo, dependendo do tipo de input:
+        A API executa até **30 checkers** em paralelo, dependendo do tipo de input:
 
         ### Social & Legal (CNPJ/CPF)
         - **Slave Labor Registry**: Lista Suja do Trabalho Escravo (MTE)
@@ -157,6 +157,9 @@ paths:
         ### Uruguay (RUC/CI)
         - **SNAP Protected Areas**: Sobreposição com Sistema Nacional de Áreas Protegidas
         - **DICOSE Rural Registry**: Registro de estabelecimento rural/pecuário
+
+        ### Argentina (CUIT/CUIL)
+        - **REPSAL - Sanciones Laborales**: Registro Público de Empleadores con Sanciones Laborales — infrações trabalhistas ativas (trabalho não registrado, trabalho infantil, trata de personas)
 
         ---
 

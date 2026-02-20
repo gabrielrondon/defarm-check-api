@@ -3,6 +3,7 @@ import { checkerRegistry } from './registry.js';
 
 // Social checkers
 import slaveLaborChecker from './social/slave-labor.js';
+import repsalArgentinaChecker from './social/repsal-argentina.js';
 
 // Legal checkers
 import cguSanctionsChecker from './legal/cgu-sanctions.js';
@@ -42,6 +43,7 @@ import dicoseRuralChecker from './uruguay/dicose-rural.js';
 
 // Register all checkers
 checkerRegistry.register(slaveLaborChecker);
+checkerRegistry.register(repsalArgentinaChecker);
 checkerRegistry.register(cguSanctionsChecker);
 checkerRegistry.register(carChecker);
 checkerRegistry.register(deforestationChecker);
