@@ -59,4 +59,5 @@ export interface CheckerMetadata {
   description: string;
   priority: number; // 1-10
   supportedInputTypes: string[];
+  supportedCountries?: string[]; // Países suportados (default: ['BR'] para backwards compatibility)
 }

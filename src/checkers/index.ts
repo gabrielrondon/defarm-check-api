@@ -18,6 +18,19 @@ import { QueimadasChecker } from './environmental/queimadas.js';
 import { MapBiomasAlertaChecker } from './environmental/mapbiomas-alerta.js';
 import { AnaOutorgasChecker } from './environmental/ana-outorgas.js';
 import { CarProdesIntersectionChecker } from './environmental/car-prodes-intersection.js';
+import mapBiomasLandUseChecker from './environmental/mapbiomas-land-use.js';
+import ndviProductivityChecker from './environmental/ndvi-productivity.js';
+import reservaLegalComplianceChecker from './environmental/reserva-legal-compliance.js';
+import pastureDegradationChecker from './environmental/pasture-degradation.js';
+import landUseHistoryChecker from './environmental/land-use-history.js';
+import productivityBenchmarkChecker from './environmental/productivity-benchmark.js';
+import fireScarMappingChecker from './environmental/fire-scar-mapping.js';
+import phenologyCropCyclesChecker from './environmental/phenology-crop-cycles.js';
+import carbonStockChecker from './environmental/carbon-stock.js';
+import waterBodyMonitoringChecker from './environmental/water-body-monitoring.js';
+import soilErosionRiskChecker from './environmental/soil-erosion-risk.js';
+import irrigationDetectionChecker from './environmental/irrigation-detection.js';
+import cropMappingChecker from './environmental/crop-mapping.js';
 
 // Positive checkers (certifications, compliance indicators)
 import { MapaOrganicosChecker } from './positive/mapa-organicos.js';
@@ -40,6 +53,19 @@ checkerRegistry.register(new MapBiomasAlertaChecker());
 checkerRegistry.register(new MapaOrganicosChecker());
 checkerRegistry.register(new AnaOutorgasChecker());
 checkerRegistry.register(new CarProdesIntersectionChecker());
+checkerRegistry.register(mapBiomasLandUseChecker);
+checkerRegistry.register(ndviProductivityChecker);
+checkerRegistry.register(reservaLegalComplianceChecker);
+checkerRegistry.register(pastureDegradationChecker);
+checkerRegistry.register(landUseHistoryChecker);
+checkerRegistry.register(productivityBenchmarkChecker);
+checkerRegistry.register(fireScarMappingChecker);
+checkerRegistry.register(phenologyCropCyclesChecker);
+checkerRegistry.register(carbonStockChecker);
+checkerRegistry.register(waterBodyMonitoringChecker);
+checkerRegistry.register(soilErosionRiskChecker);
+checkerRegistry.register(irrigationDetectionChecker);
+checkerRegistry.register(cropMappingChecker);
 
 // Uruguay checkers
 checkerRegistry.register(snapProtectedAreasChecker);

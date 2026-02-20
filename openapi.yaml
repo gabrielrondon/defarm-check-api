@@ -19,13 +19,18 @@ info:
     - Terras Indígenas (FUNAI) - Todas TIs demarcadas no Brasil
     - Unidades de Conservação (ICMBio) - Todas UCs federais, estaduais e municipais
     - Cadastro Ambiental Rural (CAR/SICAR) - Cobertura nacional 27 estados
+    - MapBiomas Alerta - Alertas de desmatamento validados + inteligência territorial
+    - Reserva Legal Compliance (MapBiomas) - Conformidade da Reserva Legal via cruzamento CAR
+    - Land Use Conversion History (MapBiomas Collection) - Trajetória uso do solo 1985-2024 + corte temporal Código Florestal
+    - NDVI Productivity (NASA MODIS) - Índice de produtividade da pastagem/vegetação
+    - Pasture Degradation Index (ORNL DAAC MODIS) - Degradação de pastagem via NDVI + queimadas
 
     **Fontes de dados - Uruguai:**
     - SNAP - Sistema Nacional de Áreas Protegidas (MVOTMA)
     - DICOSE - Registro Rural/Pecuário (MGAP)
 
     **Documentação completa:** https://github.com/gabrielrondon/defarm-check-api
-  version: 2.2.0
+  version: 2.7.0
   contact:
     name: DeFarm Support
     email: suporte@defarm.com
@@ -76,7 +81,7 @@ paths:
 
         ## 🔍 Checkers Executados Automaticamente
 
-        A API executa até **13 checkers** em paralelo, dependendo do tipo de input:
+        A API executa até **26 checkers** em paralelo, dependendo do tipo de input:
 
         ### Social & Legal (CNPJ/CPF)
         - **Slave Labor Registry**: Lista Suja do Trabalho Escravo (MTE)
@@ -89,8 +94,21 @@ paths:
         - **CAR Registry**: Status do CAR (ativo/cancelado/suspenso)
         - **🔄 CAR x PRODES Intersection**: Cruza geometria do CAR com polígonos PRODES para detectar desmatamento DENTRO da propriedade ⭐
         - **MapBiomas Validated Deforestation**: Desmatamento validado por analistas dentro do CAR
+        - **MapBiomas Territory Intelligence**: Informações territoriais (bioma, TIs, UCs) e alertas via MapBiomas Alerta
+        - **Reserva Legal Compliance (MapBiomas)**: Conformidade da Reserva Legal — cruza alertas de desmatamento com a RL declarada no CAR
+        - **Land Use Conversion History (MapBiomas)**: Trajetória uso do solo 1985–2024 — detecta conversão de nativo para antrópico e corte temporal do Código Florestal
+        - **Productivity vs Regional Benchmark (MODIS NPP)**: Compara NPP da propriedade com benchmark do bioma — detecta sub-utilização e abandono
+        - **Fire Scar Mapping (MODIS MCD64A1)**: Cicatrizes de incêndio confirmadas por satélite (últimos 5 anos, 500m)
+        - **Phenology & Crop Cycles (MODIS)**: Detecta ciclos de plantio/colheita, dupla safra, irrigação e abandono via fenologia NDVI
+        - **Carbon Stock Estimation (MODIS VCF)**: Estima AGB e CO2eq da propriedade via cobertura arbórea (MOD44B 250m)
+        - **Water Body Monitoring (MODIS)**: Monitora corpos d'água e áreas úmidas — detecta desaparecimento e violação de APP
+        - **NDVI Productivity (MODIS)**: Índice de produtividade NDVI via NASA MODIS (3 anos, resolução 250m)
+        - **Pasture Degradation Index (MODIS)**: Degradação de pastagem via NDVI MODIS + focos de queimada (PQI 0-100)
         - **INPE Fire Hotspots**: Focos de calor/queimadas dentro do CAR (últimos 90 dias)
         - **ANA Water Use Permits**: Outorgas de uso de água próximas ao CAR
+        - **Soil Exposure & Erosion Risk (Sentinel-2)**: Bare Soil Index (BSI) Sentinel-2 L2A (10m) — detecta solo exposto prolongado e risco de erosão
+        - **Irrigation Detection (Sentinel-2 NDMI)**: NDMI Sentinel-2 L2A (10m) — detecta irrigação na estação seca e cruza com outorgas ANA
+        - **Crop Mapping (Sentinel-2 NDVI)**: Séries temporais NDVI Sentinel-2 (10m, 16-day) — classifica cobertura, detecta dupla safra e expansão agrícola
 
         ### Environmental - Spatial (COORDINATES/ADDRESS)
         - **PRODES Deforestation**: Verifica se coordenadas caem em polígono de desmatamento histórico
@@ -98,9 +116,20 @@ paths:
         - **Indigenous Lands**: Verifica sobreposição com Terras Indígenas (FUNAI)
         - **Conservation Units**: Verifica sobreposição com UCs (ICMBio)
         - **IBAMA Embargoes (Spatial)**: Embargos em buffer de 5km das coordenadas
-        - **MapBiomas Validated Deforestation**: Desmatamento validado próximo às coordenadas
+        - **MapBiomas Territory Intelligence**: Alertas de desmatamento validados próximos às coordenadas + contexto territorial
+        - **Land Use Conversion History (MapBiomas)**: Trajetória histórica de uso do solo para o ponto (1985–2024)
+        - **Productivity vs Regional Benchmark (MODIS NPP)**: NPP da localização vs benchmark do bioma
+        - **Fire Scar Mapping (MODIS MCD64A1)**: Cicatrizes de incêndio confirmadas por satélite
+        - **Phenology & Crop Cycles (MODIS)**: Ciclos de vegetação, fenologia e detecção de mudança de uso
+        - **Carbon Stock Estimation (MODIS VCF)**: Estimativa de biomassa e carbono estocado
+        - **Water Body Monitoring (MODIS)**: Monitoramento de corpos d'água e áreas úmidas
+        - **Pasture Degradation Index (MODIS)**: Degradação de pastagem via NDVI para coordenadas
+        - **NDVI Productivity (MODIS)**: Produtividade NDVI para coordenadas
         - **INPE Fire Hotspots**: Focos de calor próximos às coordenadas
         - **ANA Water Use Permits**: Outorgas próximas às coordenadas
+        - **Soil Exposure & Erosion Risk (Sentinel-2)**: Solo exposto e risco de erosão via BSI Sentinel-2 (10m)
+        - **Irrigation Detection (Sentinel-2 NDMI)**: Irrigação na estação seca via NDMI Sentinel-2 (10m)
+        - **Crop Mapping (Sentinel-2 NDVI)**: Classificação de cobertura e ciclos agrícolas via NDVI Sentinel-2 (10m)
 
         ### Positive/Certification (CNPJ)
         - **MAPA Organic Certification**: Certificação orgânica (quando disponível)
@@ -543,7 +572,7 @@ paths:
       description: |
         Lista todas as fontes de dados (checkers) disponíveis na API.
 
-        **Total:** 13 checkers ativos (social, legal, environmental, certification)
+        **Total:** 26 checkers ativos (social, legal, environmental, satellite imagery, certification)
 
         **Útil para:**
         - Descobrir quais checkers estão ativos
@@ -611,6 +640,56 @@ paths:
                   enabled: true
                   status: "operational"
                   description: "Desmatamento validado por analistas (MapBiomas Alerta) - suporta CAR e coordenadas"
+                - name: "MapBiomas Territory Intelligence"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Informações territoriais (bioma, TIs, UCs) e alertas de desmatamento validados via MapBiomas Alerta - suporta CAR e coordenadas"
+                - name: "Reserva Legal Compliance (MapBiomas)"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Avalia conformidade da Reserva Legal cruzando alertas de desmatamento (crossedLegalReserves) com a área declarada no CAR via MapBiomas Alerta"
+                - name: "Land Use Conversion History (MapBiomas)"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Analisa trajetória de uso do solo 1985–2024 (MapBiomas Collection, Landsat 30m). Detecta conversão de nativa para antrópica e corte temporal do Código Florestal (Lei 12.651/2012)"
+                - name: "Productivity vs Regional Benchmark (MODIS NPP)"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Compara NPP (produtividade primária líquida) da propriedade com benchmark do bioma via NASA MODIS MOD17A3HGF (500m, 5 anos). Detecta sub-utilização de área e abandono."
+                - name: "Fire Scar Mapping (MODIS MCD64A1)"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Mapeia cicatrizes de incêndio histórico via MODIS MCD64A1 (Burned Area Monthly, 500m, 5 anos). Detecta áreas queimadas confirmadas com data de ignição."
+                - name: "Phenology & Crop Cycles (MODIS MCD12Q2)"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Detecta ciclos de plantio/colheita e anomalias de fenologia via MODIS MCD12Q2 (500m, anual). Identifica dupla safra, irrigação, abandono e mudança de uso não declarada."
+                - name: "Carbon Stock Estimation (MODIS VCF)"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Estima AGB (Mg/ha) e CO2eq via cobertura arbórea MODIS MOD44B VCF (250m, 5 anos). Detecta perda de cobertura florestal. Útil para REDD+ e mercado de carbono."
+                - name: "Water Body Monitoring (MODIS MCD12Q1)"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Monitora corpos d'água e áreas úmidas via MODIS MCD12Q1 IGBP (500m, anual). Detecta desaparecimento de corpos d'água e conversão de wetlands — verificação de APP."
+                - name: "NDVI Productivity (MODIS)"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Índice de produtividade NDVI via NASA MODIS MOD13Q1 (resolução 250m, 3 anos de histórico, 16-day composites)"
+                - name: "Pasture Degradation Index (MODIS)"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Índice de degradação de pastagem (PQI 0-100) via NDVI MODIS ORNL DAAC + focos de queimada - suporta CAR e coordenadas"
                 - name: "INPE Fire Hotspots"
                   category: "environmental"
                   enabled: true
@@ -621,6 +700,21 @@ paths:
                   enabled: true
                   status: "operational"
                   description: "Outorgas de uso de recursos hídricos (ANA) - suporta CAR e coordenadas"
+                - name: "Soil Exposure & Erosion Risk (Sentinel-2)"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Detecta solo exposto e risco de erosão via Bare Soil Index (BSI) Sentinel-2 L2A (10m). Requer SENTINEL_HUB_CLIENT_ID/SECRET."
+                - name: "Irrigation Detection (Sentinel-2 NDMI)"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Detecta irrigação na estação seca via NDMI Sentinel-2 L2A (10m). Cruza com outorgas ANA. Requer SENTINEL_HUB_CLIENT_ID/SECRET."
+                - name: "Crop Mapping (Sentinel-2 NDVI)"
+                  category: "environmental"
+                  enabled: true
+                  status: "operational"
+                  description: "Classifica cobertura do solo e detecta ciclos agrícolas, dupla safra e expansão via NDVI Sentinel-2 L2A (10m, 16-day composites). Requer SENTINEL_HUB_CLIENT_ID/SECRET."
 
   /sources/{category}:
     get:

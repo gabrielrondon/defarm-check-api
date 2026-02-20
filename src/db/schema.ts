@@ -402,3 +402,27 @@ export const apiKeysIdx = {
   keyHashIdx: 'idx_api_keys_key_hash',
   isActiveIdx: 'idx_api_keys_is_active'
 };
+
+// Cache persistente de resultados de satellite checkers
+// Armazena histórico completo + TTL gerenciado para evitar re-consultas desnecessárias
+export const satelliteCheckerResults = pgTable('satellite_checker_results', {
+  id:          uuid('id').defaultRandom().primaryKey(),
+  inputType:   varchar('input_type', { length: 30 }).notNull(),   // CAR, COORDINATES, etc
+  inputValue:  varchar('input_value', { length: 200 }).notNull(), // CAR number ou 'lat,lon'
+  checkerName: varchar('checker_name', { length: 100 }).notNull(),
+  status:      varchar('status', { length: 20 }).notNull(),       // PASS/FAIL/WARNING/NOT_APPLICABLE/ERROR
+  severity:    varchar('severity', { length: 20 }),
+  message:     text('message'),
+  resultJson:  jsonb('result_json').notNull(),                    // CheckerResult completo
+  ttlSeconds:  integer('ttl_seconds').notNull(),
+  fetchedAt:   timestamp('fetched_at', { withTimezone: true }).defaultNow().notNull(),
+  expiresAt:   timestamp('expires_at', { withTimezone: true }).notNull(), // fetchedAt + ttlSeconds
+  isCurrent:   boolean('is_current').default(true).notNull(),    // true = resultado mais recente
+  createdAt:   timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
+
+export const satelliteCheckerResultsIdx = {
+  lookupIdx:  'idx_satellite_results_lookup',   // (input_value, checker_name, is_current)
+  expiresIdx: 'idx_satellite_results_expires',  // (expires_at) para encontrar stale
+  historyIdx: 'idx_satellite_results_history'   // (input_value, checker_name, fetched_at DESC)
+};

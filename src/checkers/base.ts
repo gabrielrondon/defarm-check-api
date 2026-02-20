@@ -111,7 +111,7 @@ export abstract class BaseChecker {
   }
 
   // Wrapper para timeout
-  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  protected async withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
     return Promise.race([
       promise,
       new Promise<T>((_, reject) =>
