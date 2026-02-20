@@ -200,7 +200,7 @@ export class GrazingPatternAnalyzerChecker extends SatelliteBaseChecker {
       'Identifica superpastejo e padrões de rotação sustentável.',
     priority: 7,
     supportedInputTypes: [InputType.COORDINATES, InputType.CAR],
-    supportedCountries: [Country.BRAZIL]  // MODIS is global; expand per-country checkers later
+    supportedCountries: [Country.BRAZIL, Country.URUGUAY, Country.ARGENTINA, Country.PARAGUAY, Country.BOLIVIA, Country.CHILE, Country.COLOMBIA, Country.PERU] // Global MODIS data
   };
 
   readonly config: CheckerConfig = {

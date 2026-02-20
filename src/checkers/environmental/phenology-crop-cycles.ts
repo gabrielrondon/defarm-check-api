@@ -31,7 +31,7 @@ import {
   CheckStatus,
   Severity
 } from '../../types/checker.js';
-import { NormalizedInput, InputType } from '../../types/input.js';
+import { NormalizedInput, InputType, Country } from '../../types/input.js';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
@@ -56,7 +56,8 @@ export class PhenologyCropCyclesChecker extends SatelliteBaseChecker {
       '(Land Cover Dynamics 500m, anual). Identifica conversões não declaradas, ' +
       'irrigação, dupla safra e abandono de área.',
     priority: 2,
-    supportedInputTypes: [InputType.COORDINATES, InputType.CAR]
+    supportedInputTypes: [InputType.COORDINATES, InputType.CAR],
+    supportedCountries: [Country.BRAZIL, Country.URUGUAY, Country.ARGENTINA, Country.PARAGUAY, Country.BOLIVIA, Country.CHILE, Country.COLOMBIA, Country.PERU] // Global MODIS data
   };
 
   readonly config: CheckerConfig = {

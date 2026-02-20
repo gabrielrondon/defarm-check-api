@@ -31,7 +31,7 @@ import {
   CheckStatus,
   Severity
 } from '../../types/checker.js';
-import { NormalizedInput, InputType } from '../../types/input.js';
+import { NormalizedInput, InputType, Country } from '../../types/input.js';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
@@ -76,7 +76,8 @@ export class IrrigationDetectionChecker extends SatelliteBaseChecker {
       'Detecta irrigação via NDMI (Normalized Difference Moisture Index) Sentinel-2 (10m). ' +
       'Cruza com outorgas ANA do banco — irrigação sem outorga é sinalizada como FAIL.',
     priority: 6,
-    supportedInputTypes: [InputType.COORDINATES, InputType.CAR]
+    supportedInputTypes: [InputType.COORDINATES, InputType.CAR],
+    supportedCountries: [Country.BRAZIL, Country.URUGUAY, Country.ARGENTINA, Country.PARAGUAY, Country.BOLIVIA, Country.CHILE, Country.COLOMBIA, Country.PERU] // Global Sentinel-2 data
   };
 
   readonly config: CheckerConfig = {

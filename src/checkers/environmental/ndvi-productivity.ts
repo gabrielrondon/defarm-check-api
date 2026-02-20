@@ -21,7 +21,7 @@ import {
   CheckStatus,
   Severity
 } from '../../types/checker.js';
-import { NormalizedInput, InputType } from '../../types/input.js';
+import { NormalizedInput, InputType, Country } from '../../types/input.js';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
@@ -74,7 +74,8 @@ export class NdviProductivityChecker extends SatelliteBaseChecker {
       'Série temporal de NDVI via ORNL DAAC/MODIS MOD13Q1 (250m, 16 dias). ' +
       'Detecta degradação de pastagem, queda de produtividade e abandono de área.',
     priority: 6,
-    supportedInputTypes: [InputType.COORDINATES, InputType.CAR]
+    supportedInputTypes: [InputType.COORDINATES, InputType.CAR],
+    supportedCountries: [Country.BRAZIL, Country.URUGUAY, Country.ARGENTINA, Country.PARAGUAY, Country.BOLIVIA, Country.CHILE, Country.COLOMBIA, Country.PERU] // Global MODIS data
   };
 
   readonly config: CheckerConfig = {

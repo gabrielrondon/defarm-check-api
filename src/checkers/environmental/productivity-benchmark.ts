@@ -29,7 +29,7 @@ import {
   CheckStatus,
   Severity
 } from '../../types/checker.js';
-import { NormalizedInput, InputType } from '../../types/input.js';
+import { NormalizedInput, InputType, Country } from '../../types/input.js';
 import { db } from '../../db/client.js';
 import { sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
@@ -82,7 +82,8 @@ export class ProductivityBenchmarkChecker extends SatelliteBaseChecker {
       'Compara produtividade primária líquida (NPP) da propriedade com benchmark regional do bioma ' +
       'via NASA MODIS MOD17A3HGF (NPP anual 500m, 5 anos). Detecta sub-utilização e abandono de área.',
     priority: 4,
-    supportedInputTypes: [InputType.COORDINATES, InputType.CAR]
+    supportedInputTypes: [InputType.COORDINATES, InputType.CAR],
+    supportedCountries: [Country.BRAZIL, Country.URUGUAY, Country.ARGENTINA, Country.PARAGUAY, Country.BOLIVIA, Country.CHILE, Country.COLOMBIA, Country.PERU] // Global MODIS data
   };
 
   readonly config: CheckerConfig = {
