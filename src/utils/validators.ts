@@ -89,6 +89,131 @@ function validateCICheckDigit(ci: string): boolean {
 }
 
 // ============================================================================
+// ARGENTINA - Validators
+// ============================================================================
+
+// Valida e normaliza CUIT (Clave Única de Identificación Tributaria - Argentina)
+export function normalizeCUIT(cuit: string): string {
+  const cleaned = cuit.replace(/[\-\.]/g, '');
+  if (!/^\d{11}$/.test(cleaned)) {
+    throw new Error('CUIT inválido: deve ter 11 dígitos');
+  }
+  return cleaned;
+}
+
+// Valida e normaliza CUIL (Clave Única de Identificación Laboral - Argentina)
+export function normalizeCUIL(cuil: string): string {
+  const cleaned = cuil.replace(/[\-\.]/g, '');
+  if (!/^\d{11}$/.test(cleaned)) {
+    throw new Error('CUIL inválido: deve ter 11 dígitos');
+  }
+  return cleaned;
+}
+
+// ============================================================================
+// PARAGUAY - Validators
+// ============================================================================
+
+// Valida e normaliza RUC (Registro Único del Contribuyente - Paraguay)
+export function normalizeRUC_PY(ruc: string): string {
+  const cleaned = ruc.replace(/[\-\.]/g, '');
+  if (!/^\d{6,11}$/.test(cleaned)) {
+    throw new Error('RUC Paraguay inválido: deve ter 6-11 dígitos');
+  }
+  return cleaned;
+}
+
+// Valida e normaliza CI (Cédula de Identidad - Paraguay)
+export function normalizeCI_PY(ci: string): string {
+  const cleaned = ci.replace(/[\-\.\s]/g, '');
+  if (!/^\d{7,8}$/.test(cleaned)) {
+    throw new Error('CI Paraguay inválida: deve ter 7-8 dígitos');
+  }
+  return cleaned;
+}
+
+// ============================================================================
+// BOLIVIA - Validators
+// ============================================================================
+
+// Valida e normaliza NIT (Número de Identificación Tributaria - Bolivia)
+export function normalizeNIT_BO(nit: string): string {
+  const cleaned = nit.replace(/[\-\.\s]/g, '');
+  if (!/^\d{7,13}$/.test(cleaned)) {
+    throw new Error('NIT Bolivia inválido: deve ter 7-13 dígitos');
+  }
+  return cleaned;
+}
+
+// Valida e normaliza CI (Cédula de Identidad - Bolivia)
+export function normalizeCI_BO(ci: string): string {
+  const cleaned = ci.replace(/[\-\.\s]/g, '');
+  if (!/^\d{7}$/.test(cleaned)) {
+    throw new Error('CI Bolivia inválida: deve ter 7 dígitos');
+  }
+  return cleaned;
+}
+
+// ============================================================================
+// CHILE - Validators
+// ============================================================================
+
+// Valida e normaliza RUT (Rol Único Tributario - Chile)
+// Formato: XXXXXXXX-X (dígito verificador pode ser 0-9 ou K)
+export function normalizeRUT(rut: string): string {
+  const cleaned = rut.replace(/\./g, '').replace(/-/g, '');
+  // RUT sem o dígito verificador: 7-8 dígitos; total com DV: 8-9 chars
+  if (!/^\d{7,8}[0-9Kk]$/.test(cleaned)) {
+    throw new Error('RUT inválido: formato esperado XXXXXXXX-X');
+  }
+  return cleaned.toUpperCase();
+}
+
+// ============================================================================
+// COLOMBIA - Validators
+// ============================================================================
+
+// Valida e normaliza NIT (Número de Identificación Tributaria - Colombia)
+export function normalizeNIT_CO(nit: string): string {
+  const cleaned = nit.replace(/[\-\.\s]/g, '');
+  if (!/^\d{9,10}$/.test(cleaned)) {
+    throw new Error('NIT Colombia inválido: deve ter 9-10 dígitos');
+  }
+  return cleaned;
+}
+
+// Valida e normaliza CC (Cédula de Ciudadanía - Colombia)
+export function normalizeCC_CO(cc: string): string {
+  const cleaned = cc.replace(/[\-\.\s]/g, '');
+  if (!/^\d{8,10}$/.test(cleaned)) {
+    throw new Error('CC Colombia inválida: deve ter 8-10 dígitos');
+  }
+  return cleaned;
+}
+
+// ============================================================================
+// PERU - Validators
+// ============================================================================
+
+// Valida e normaliza RUC (Registro Único de Contribuyentes - Peru)
+export function normalizeRUC_PE(ruc: string): string {
+  const cleaned = ruc.replace(/[\-\.\s]/g, '');
+  if (!/^\d{11}$/.test(cleaned)) {
+    throw new Error('RUC Peru inválido: deve ter 11 dígitos');
+  }
+  return cleaned;
+}
+
+// Valida e normaliza DNI (Documento Nacional de Identidad - Peru)
+export function normalizeDNI_PE(dni: string): string {
+  const cleaned = dni.replace(/[\-\.\s]/g, '');
+  if (!/^\d{8}$/.test(cleaned)) {
+    throw new Error('DNI Peru inválido: deve ter 8 dígitos');
+  }
+  return cleaned;
+}
+
+// ============================================================================
 // UNIVERSAL - Validators
 // ============================================================================
 
@@ -115,6 +240,40 @@ export function normalizeInput(type: InputType, value: any): string {
       return normalizeRUC(value as string);
     case InputType.CI:
       return normalizeCI(value as string);
+
+    // Argentina
+    case InputType.CUIT:
+      return normalizeCUIT(value as string);
+    case InputType.CUIL:
+      return normalizeCUIL(value as string);
+
+    // Paraguay
+    case InputType.RUC_PY:
+      return normalizeRUC_PY(value as string);
+    case InputType.CI_PY:
+      return normalizeCI_PY(value as string);
+
+    // Bolivia
+    case InputType.NIT_BO:
+      return normalizeNIT_BO(value as string);
+    case InputType.CI_BO:
+      return normalizeCI_BO(value as string);
+
+    // Chile
+    case InputType.RUT:
+      return normalizeRUT(value as string);
+
+    // Colombia
+    case InputType.NIT_CO:
+      return normalizeNIT_CO(value as string);
+    case InputType.CC_CO:
+      return normalizeCC_CO(value as string);
+
+    // Peru
+    case InputType.RUC_PE:
+      return normalizeRUC_PE(value as string);
+    case InputType.DNI_PE:
+      return normalizeDNI_PE(value as string);
 
     // Universal
     case InputType.COORDINATES:
@@ -152,6 +311,29 @@ export function detectCountryFromInputType(type: InputType, explicitCountry?: Co
     case InputType.RUC:
     case InputType.CI:
       return Country.URUGUAY;
+
+    case InputType.CUIT:
+    case InputType.CUIL:
+      return Country.ARGENTINA;
+
+    case InputType.RUC_PY:
+    case InputType.CI_PY:
+      return Country.PARAGUAY;
+
+    case InputType.NIT_BO:
+    case InputType.CI_BO:
+      return Country.BOLIVIA;
+
+    case InputType.RUT:
+      return Country.CHILE;
+
+    case InputType.NIT_CO:
+    case InputType.CC_CO:
+      return Country.COLOMBIA;
+
+    case InputType.RUC_PE:
+    case InputType.DNI_PE:
+      return Country.PERU;
 
     // Para tipos universais, default é Brasil (backwards compatibility)
     case InputType.COORDINATES:

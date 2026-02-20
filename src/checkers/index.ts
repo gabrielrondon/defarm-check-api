@@ -31,6 +31,7 @@ import waterBodyMonitoringChecker from './environmental/water-body-monitoring.js
 import soilErosionRiskChecker from './environmental/soil-erosion-risk.js';
 import irrigationDetectionChecker from './environmental/irrigation-detection.js';
 import cropMappingChecker from './environmental/crop-mapping.js';
+import grazingPatternAnalyzerChecker from './environmental/grazing-pattern-analyzer.js';
 
 // Positive checkers (certifications, compliance indicators)
 import { MapaOrganicosChecker } from './positive/mapa-organicos.js';
@@ -66,6 +67,7 @@ checkerRegistry.register(waterBodyMonitoringChecker);
 checkerRegistry.register(soilErosionRiskChecker);
 checkerRegistry.register(irrigationDetectionChecker);
 checkerRegistry.register(cropMappingChecker);
+checkerRegistry.register(grazingPatternAnalyzerChecker);
 
 // Uruguay checkers
 checkerRegistry.register(snapProtectedAreasChecker);

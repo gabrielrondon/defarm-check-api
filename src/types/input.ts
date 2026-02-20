@@ -3,7 +3,13 @@ import { z } from 'zod';
 // Países suportados
 export enum Country {
   BRAZIL = 'BR',
-  URUGUAY = 'UY'
+  URUGUAY = 'UY',
+  ARGENTINA = 'AR',
+  PARAGUAY = 'PY',
+  BOLIVIA = 'BO',
+  CHILE = 'CL',
+  COLOMBIA = 'CO',
+  PERU = 'PE'
 }
 
 // Tipos de input suportados
@@ -17,6 +23,29 @@ export enum InputType {
   // Uruguay
   RUC = 'RUC', // Registro Único de Contribuyentes (12 dígitos)
   CI = 'CI',   // Cédula de Identidad (7-8 dígitos + check digit)
+
+  // Argentina
+  CUIT = 'CUIT',  // Clave Única de Identificación Tributaria (11 dígitos)
+  CUIL = 'CUIL',  // Clave Única de Identificación Laboral (11 dígitos)
+
+  // Paraguay
+  RUC_PY = 'RUC_PY', // Registro Único del Contribuyente (11 dígitos)
+  CI_PY = 'CI_PY',   // Cédula de Identidad paraguaya (7-8 dígitos)
+
+  // Bolivia
+  NIT_BO = 'NIT_BO', // Número de Identificación Tributaria (13 dígitos)
+  CI_BO = 'CI_BO',   // Cédula de Identidad boliviana (7 dígitos)
+
+  // Chile
+  RUT = 'RUT',  // Rol Único Tributario (8-9 dígitos + dígito verificador)
+
+  // Colombia
+  NIT_CO = 'NIT_CO', // Número de Identificación Tributaria colombiano (10 dígitos)
+  CC_CO = 'CC_CO',   // Cédula de Ciudadanía colombiana (8-10 dígitos)
+
+  // Peru
+  RUC_PE = 'RUC_PE', // Registro Único de Contribuyentes peruano (11 dígitos)
+  DNI_PE = 'DNI_PE', // Documento Nacional de Identidad peruano (8 dígitos)
 
   // Universal
   COORDINATES = 'COORDINATES',

@@ -10,6 +10,12 @@ info:
     **Países suportados:**
     - 🇧🇷 Brasil (CNPJ, CPF, CAR, Coordenadas)
     - 🇺🇾 Uruguai (RUC, CI, Coordenadas)
+    - 🇦🇷 Argentina (CUIT, CUIL, Coordenadas)
+    - 🇵🇾 Paraguai (RUC_PY, CI_PY, Coordenadas)
+    - 🇧🇴 Bolívia (NIT_BO, CI_BO, Coordenadas)
+    - 🇨🇱 Chile (RUT, Coordenadas)
+    - 🇨🇴 Colômbia (NIT_CO, CC_CO, Coordenadas)
+    - 🇵🇪 Peru (RUC_PE, DNI_PE, Coordenadas)
 
     **Fontes de dados - Brasil:**
     - Lista Suja do Trabalho Escravo (MTE) - 678 registros
@@ -24,6 +30,7 @@ info:
     - Land Use Conversion History (MapBiomas Collection) - Trajetória uso do solo 1985-2024 + corte temporal Código Florestal
     - NDVI Productivity (NASA MODIS) - Índice de produtividade da pastagem/vegetação
     - Pasture Degradation Index (ORNL DAAC MODIS) - Degradação de pastagem via NDVI + queimadas
+    - Grazing Pattern Analyzer (NASA MODIS) - Detecta eventos de pastejo, tempo de recuperação e regularidade de rotação via série temporal NDVI
 
     **Fontes de dados - Uruguai:**
     - SNAP - Sistema Nacional de Áreas Protegidas (MVOTMA)
@@ -104,6 +111,7 @@ paths:
         - **Water Body Monitoring (MODIS)**: Monitora corpos d'água e áreas úmidas — detecta desaparecimento e violação de APP
         - **NDVI Productivity (MODIS)**: Índice de produtividade NDVI via NASA MODIS (3 anos, resolução 250m)
         - **Pasture Degradation Index (MODIS)**: Degradação de pastagem via NDVI MODIS + focos de queimada (PQI 0-100)
+        - **Grazing Pattern Analyzer (MODIS)**: Detecta eventos de pastejo, tempo de recuperação e regularidade de rotação (CV) via série NDVI anual
         - **INPE Fire Hotspots**: Focos de calor/queimadas dentro do CAR (últimos 90 dias)
         - **ANA Water Use Permits**: Outorgas de uso de água próximas ao CAR
         - **Soil Exposure & Erosion Risk (Sentinel-2)**: Bare Soil Index (BSI) Sentinel-2 L2A (10m) — detecta solo exposto prolongado e risco de erosão
@@ -125,6 +133,7 @@ paths:
         - **Water Body Monitoring (MODIS)**: Monitoramento de corpos d'água e áreas úmidas
         - **Pasture Degradation Index (MODIS)**: Degradação de pastagem via NDVI para coordenadas
         - **NDVI Productivity (MODIS)**: Produtividade NDVI para coordenadas
+        - **Grazing Pattern Analyzer (MODIS)**: Detecta eventos de pastejo, tempo de recuperação e regularidade de rotação via série temporal NDVI
         - **INPE Fire Hotspots**: Focos de calor próximos às coordenadas
         - **ANA Water Use Permits**: Outorgas próximas às coordenadas
         - **Soil Exposure & Erosion Risk (Sentinel-2)**: Solo exposto e risco de erosão via BSI Sentinel-2 (10m)
@@ -274,6 +283,66 @@ paths:
                       lat: -34.4711
                       lon: -56.1945
                     country: UY
+              cuit_argentina:
+                summary: Verificar CUIT (Argentina)
+                value:
+                  input:
+                    type: CUIT
+                    value: "20123456789"
+                    country: AR
+              coordinates_argentina:
+                summary: Verificar coordenadas (Argentina)
+                value:
+                  input:
+                    type: COORDINATES
+                    value:
+                      lat: -34.6037
+                      lon: -58.3816
+                    country: AR
+              ruc_paraguay:
+                summary: Verificar RUC (Paraguai)
+                value:
+                  input:
+                    type: RUC_PY
+                    value: "80000001"
+                    country: PY
+              coordinates_paraguay:
+                summary: Verificar coordenadas (Paraguai)
+                value:
+                  input:
+                    type: COORDINATES
+                    value:
+                      lat: -25.2867
+                      lon: -57.647
+                    country: PY
+              nit_bolivia:
+                summary: Verificar NIT (Bolívia)
+                value:
+                  input:
+                    type: NIT_BO
+                    value: "1023456789"
+                    country: BO
+              rut_chile:
+                summary: Verificar RUT (Chile)
+                value:
+                  input:
+                    type: RUT
+                    value: "12345678K"
+                    country: CL
+              nit_colombia:
+                summary: Verificar NIT (Colômbia)
+                value:
+                  input:
+                    type: NIT_CO
+                    value: "9001234567"
+                    country: CO
+              ruc_peru:
+                summary: Verificar RUC (Peru)
+                value:
+                  input:
+                    type: RUC_PE
+                    value: "20123456789"
+                    country: PE
               with_options:
                 summary: Com opções customizadas
                 value:
@@ -1611,7 +1680,23 @@ components:
       enum:
         - BR
         - UY
-      description: Código do país (ISO 3166-1 alpha-2)
+        - AR
+        - PY
+        - BO
+        - CL
+        - CO
+        - PE
+      description: |
+        Código do país (ISO 3166-1 alpha-2).
+        Países suportados:
+        - **BR**: Brasil
+        - **UY**: Uruguai
+        - **AR**: Argentina
+        - **PY**: Paraguai
+        - **BO**: Bolívia
+        - **CL**: Chile
+        - **CO**: Colômbia
+        - **PE**: Peru
 
     CheckRequest:
       type: object
@@ -1633,30 +1718,84 @@ components:
                 - IE
                 - RUC
                 - CI
+                - CUIT
+                - CUIL
+                - RUC_PY
+                - CI_PY
+                - NIT_BO
+                - CI_BO
+                - RUT
+                - NIT_CO
+                - CC_CO
+                - RUC_PE
+                - DNI_PE
                 - COORDINATES
                 - ADDRESS
                 - NAME
               description: |
                 Tipo do input a ser verificado:
-                - **CNPJ**: CNPJ brasileiro (14 dígitos) — somente Brasil
-                - **CPF**: CPF brasileiro (11 dígitos) — somente Brasil
-                - **CAR**: Cadastro Ambiental Rural — somente Brasil
-                - **IE**: Inscrição Estadual — somente Brasil
-                - **RUC**: Registro Único de Contribuyentes (12 dígitos) — somente Uruguai
-                - **CI**: Cédula de Identidad uruguaia (7–8 dígitos) — somente Uruguai
-                - **COORDINATES**: Coordenadas geográficas (universal)
-                - **ADDRESS**: Endereço em texto livre (universal)
-                - **NAME**: Nome da empresa/produtor (universal)
+
+                **Brasil:**
+                - **CNPJ**: CNPJ brasileiro (14 dígitos)
+                - **CPF**: CPF brasileiro (11 dígitos)
+                - **CAR**: Cadastro Ambiental Rural
+                - **IE**: Inscrição Estadual
+
+                **Uruguai:**
+                - **RUC**: Registro Único de Contribuyentes (12 dígitos)
+                - **CI**: Cédula de Identidad (7–8 dígitos)
+
+                **Argentina:**
+                - **CUIT**: Clave Única de Identificación Tributaria (11 dígitos)
+                - **CUIL**: Clave Única de Identificación Laboral (11 dígitos)
+
+                **Paraguai:**
+                - **RUC_PY**: Registro Único del Contribuyente (6–11 dígitos)
+                - **CI_PY**: Cédula de Identidad paraguaya (7–8 dígitos)
+
+                **Bolívia:**
+                - **NIT_BO**: Número de Identificación Tributaria (7–13 dígitos)
+                - **CI_BO**: Cédula de Identidad boliviana (7 dígitos)
+
+                **Chile:**
+                - **RUT**: Rol Único Tributario (XXXXXXXX-X, com dígito verificador)
+
+                **Colômbia:**
+                - **NIT_CO**: Número de Identificación Tributaria (9–10 dígitos)
+                - **CC_CO**: Cédula de Ciudadanía (8–10 dígitos)
+
+                **Peru:**
+                - **RUC_PE**: Registro Único de Contribuyentes (11 dígitos)
+                - **DNI_PE**: Documento Nacional de Identidad (8 dígitos)
+
+                **Universal:**
+                - **COORDINATES**: Coordenadas geográficas (lat/lon WGS84)
+                - **ADDRESS**: Endereço em texto livre (geocodificado automaticamente)
+                - **NAME**: Nome da empresa/produtor
             country:
               type: string
               enum:
                 - BR
                 - UY
+                - AR
+                - PY
+                - BO
+                - CL
+                - CO
+                - PE
               description: |
                 Código do país (ISO 3166-1 alpha-2). Opcional — detectado automaticamente
-                pelo tipo de input (RUC/CI → UY, CNPJ/CPF/CAR/IE → BR).
-                Obrigatório para COORDINATES quando país não pode ser inferido.
-              example: UY
+                pelo tipo de documento:
+                - CNPJ/CPF/CAR/IE → BR
+                - RUC/CI → UY
+                - CUIT/CUIL → AR
+                - RUC_PY/CI_PY → PY
+                - NIT_BO/CI_BO → BO
+                - RUT → CL
+                - NIT_CO/CC_CO → CO
+                - RUC_PE/DNI_PE → PE
+                - COORDINATES/ADDRESS/NAME → obrigatório quando não-BR
+              example: AR
             value:
               oneOf:
                 - type: string
@@ -1707,7 +1846,7 @@ components:
               description: Incluir evidências e links para fontes
             timeout:
               type: integer
-              default: 15000
+              default: 30000
               description: Timeout em milissegundos para cada checker
 
     CheckResponse:
