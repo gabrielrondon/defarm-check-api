@@ -161,7 +161,8 @@ export class NdviProductivityChecker extends SatelliteBaseChecker {
       windowEnd.setDate(windowEnd.getDate() - 1);
     }
 
-    const allSeries: Array<{ date: string; ndvi: number }> = [];
+    // Collect ALL subsets first, then filter (same approach as PastureDegradationChecker)
+    const allSubsets: Array<{ calendar_date: string; data?: number[] }> = [];
 
     for (const batch of batches) {
       const url = new URL(`${ORNL_BASE_URL}/${MODIS_PRODUCT}/subset`);
@@ -178,32 +179,29 @@ export class NdviProductivityChecker extends SatelliteBaseChecker {
           headers: { Accept: 'application/json' },
           signal:  AbortSignal.timeout(12000)
         });
-        if (!resp.ok) {
+        if (resp.ok) {
+          const data = (await resp.json()) as OrnlSubset;
+          allSubsets.push(...(data.subset ?? []));
+        } else {
           logger.warn({ status: resp.status, lat, lon }, 'ORNL MODIS MOD13Q1 API error');
-          continue;
-        }
-
-        const data    = (await resp.json()) as OrnlSubset;
-        const subsets = data.subset ?? [];
-
-        // With kmAboveBelow=0 & kmLeftRight=0, response is a 1×1 grid → pixel index 0
-        for (const s of subsets) {
-          const rawVal = s.data?.[0];
-          if (rawVal == null || rawVal <= -3000) continue; // fill/no-data sentinel
-          const ndvi = rawVal * SCALE_FACTOR;
-          if (ndvi < -1 || ndvi > 1) continue; // out of valid range
-          allSeries.push({ date: s.calendar_date, ndvi });
         }
       } catch {
         // Non-fatal: skip batch on timeout or network error
       }
     }
 
-    // Deduplicate and sort by date
-    const seen = new Set<string>();
-    return allSeries
-      .filter(s => !seen.has(s.date) && seen.add(s.date))
-      .sort((a, b) => a.date.localeCompare(b.date));
+    // With kmAboveBelow=0 & kmLeftRight=0, 1×1 grid → pixel index 0
+    const allSeries: Array<{ date: string; ndvi: number }> = [];
+    for (const s of allSubsets) {
+      const rawVal = s.data?.[0];
+      if (rawVal == null || rawVal <= -3000) continue; // fill/no-data sentinel
+      const ndvi = rawVal * SCALE_FACTOR;
+      if (ndvi < -1 || ndvi > 1) continue; // out of valid range
+      allSeries.push({ date: s.calendar_date, ndvi });
+    }
+
+    // Sort by date
+    return allSeries.sort((a, b) => a.date.localeCompare(b.date));
   }
 
   // --- Analyze NDVI series and build result ---
