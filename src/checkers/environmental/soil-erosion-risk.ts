@@ -43,18 +43,21 @@ import {
   SHGeometry
 } from '../../services/sentinel-hub-auth.js';
 
-// BSI evalscript for Sentinel-2 L2A
+// BSI evalscript for Sentinel-2 L2A (Statistical API requires dataMask output)
 const BSI_EVALSCRIPT = `//VERSION=3
 function setup() {
   return {
-    input: [{ bands: ["B02","B04","B08","B11"], units: "REFLECTANCE" }],
-    output: [{ id: "bsi", bands: 1, sampleType: "FLOAT32" }]
+    input: [{ bands: ["B02","B04","B08","B11","dataMask"], units: "REFLECTANCE" }],
+    output: [
+      { id: "bsi", bands: 1, sampleType: "FLOAT32" },
+      { id: "dataMask", bands: 1 }
+    ]
   };
 }
 function evaluatePixel(s) {
   const bsi = ((s.B11 + s.B04) - (s.B08 + s.B02)) /
               ((s.B11 + s.B04) + (s.B08 + s.B02) + 0.0001);
-  return [bsi];
+  return { bsi: [bsi], dataMask: [s.dataMask] };
 }`;
 
 export class SoilErosionRiskChecker extends SatelliteBaseChecker {

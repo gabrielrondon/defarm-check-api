@@ -79,12 +79,12 @@ export class QueimadasChecker extends BaseChecker {
         biome,
         frp,
         ST_Distance(
-          geometry::geography,
+          geom::geography,
           ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography
         ) as distance_meters
       FROM queimadas_focos
       WHERE ST_DWithin(
-        geometry::geography,
+        geom::geography,
         ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography,
         ${buffer}
       )

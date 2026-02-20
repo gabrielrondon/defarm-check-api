@@ -44,17 +44,20 @@ import {
   SHGeometry
 } from '../../services/sentinel-hub-auth.js';
 
-// NDMI evalscript for Sentinel-2 L2A
+// NDMI evalscript for Sentinel-2 L2A (Statistical API requires dataMask output)
 const NDMI_EVALSCRIPT = `//VERSION=3
 function setup() {
   return {
-    input: [{ bands: ["B08","B11"], units: "REFLECTANCE" }],
-    output: [{ id: "ndmi", bands: 1, sampleType: "FLOAT32" }]
+    input: [{ bands: ["B08","B11","dataMask"], units: "REFLECTANCE" }],
+    output: [
+      { id: "ndmi", bands: 1, sampleType: "FLOAT32" },
+      { id: "dataMask", bands: 1 }
+    ]
   };
 }
 function evaluatePixel(s) {
   const ndmi = (s.B08 - s.B11) / (s.B08 + s.B11 + 0.0001);
-  return [ndmi];
+  return { ndmi: [ndmi], dataMask: [s.dataMask] };
 }`;
 
 // Dry season months (1-indexed) per biome approximation

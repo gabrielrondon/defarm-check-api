@@ -62,13 +62,13 @@ export class AnaOutorgasChecker extends BaseChecker {
         data_vencimento,
         volume_anual_m3,
         ST_Distance(
-          geometry::geography,
+          geom::geography,
           ST_SetSRID(ST_MakePoint(${lon}, ${lat}), 4326)::geography
         ) as distance_meters
       FROM ana_outorgas
       WHERE
         ST_DWithin(
-          geometry::geography,
+          geom::geography,
           ST_SetSRID(ST_MakePoint(${lon}, ${lat}), 4326)::geography,
           ${radiusMeters}
         )

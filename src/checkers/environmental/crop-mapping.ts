@@ -45,17 +45,20 @@ import {
   SHGeometry
 } from '../../services/sentinel-hub-auth.js';
 
-// NDVI evalscript for Sentinel-2 L2A
+// NDVI evalscript for Sentinel-2 L2A (Statistical API requires dataMask output)
 const NDVI_EVALSCRIPT = `//VERSION=3
 function setup() {
   return {
-    input: [{ bands: ["B04","B08"], units: "REFLECTANCE" }],
-    output: [{ id: "ndvi", bands: 1, sampleType: "FLOAT32" }]
+    input: [{ bands: ["B04","B08","dataMask"], units: "REFLECTANCE" }],
+    output: [
+      { id: "ndvi", bands: 1, sampleType: "FLOAT32" },
+      { id: "dataMask", bands: 1 }
+    ]
   };
 }
 function evaluatePixel(s) {
   const ndvi = (s.B08 - s.B04) / (s.B08 + s.B04 + 0.0001);
-  return [ndvi];
+  return { ndvi: [ndvi], dataMask: [s.dataMask] };
 }`;
 
 type LandCoverType =
