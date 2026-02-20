@@ -1,31 +1,16 @@
-# Development
-.env.local
-.env.development
 node_modules/
-.git/
-
-# IDE
-.vscode/
-.idea/
-.claude/
-*.swp
-*.swo
-
-# Testing
+dist/
+data/
+car/
+.env
+.env.*
 coverage/
 .nyc_output/
-
-# Large data files (regenerate on server)
-data/*.csv
-data/*.zip
-data/*.xlsx
-data/*.json
-
-# Logs
-*.log
-logs/
-/tmp/
-
-# OS
 .DS_Store
-Thumbs.db
+*.log
+*.zip
+*.xlsx
+*.csv
+*.shp
+*.dbf
+*.geojson

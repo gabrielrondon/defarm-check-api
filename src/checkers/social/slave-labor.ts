@@ -7,11 +7,11 @@ import {
   CheckerConfig,
   Severity
 } from '../../types/checker.js';
-import { NormalizedInput, InputType } from '../../types/input.js';
+import { NormalizedInput, InputType, Country } from '../../types/input.js';
 import { logger } from '../../utils/logger.js';
 import { db } from '../../db/client.js';
 import { listaSuja } from '../../db/schema.js';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 
 export class SlaveLaborChecker extends BaseChecker {
   readonly metadata: CheckerMetadata = {
@@ -19,7 +19,8 @@ export class SlaveLaborChecker extends BaseChecker {
     category: CheckerCategory.SOCIAL,
     description: 'Verifica se CNPJ/CPF está na Lista Suja do Trabalho Escravo (MTE)',
     priority: 9,
-    supportedInputTypes: [InputType.CNPJ, InputType.CPF]
+    supportedInputTypes: [InputType.CNPJ, InputType.CPF],
+    supportedCountries: [Country.BRAZIL] // Brasil only
   };
 
   readonly config: CheckerConfig = {
@@ -32,11 +33,14 @@ export class SlaveLaborChecker extends BaseChecker {
     logger.debug({ input: input.value }, 'Checking slave labor registry');
 
     try {
-      // Query banco de dados
+      // Query banco de dados (filtrar por document + country)
       const results = await db
         .select()
         .from(listaSuja)
-        .where(eq(listaSuja.document, input.value))
+        .where(and(
+          eq(listaSuja.document, input.value),
+          eq(listaSuja.country, input.country)
+        ))
         .limit(1);
 
       const record = results[0];
