@@ -149,7 +149,13 @@ export async function healthRoutes(app: FastifyInstance) {
             status: { type: 'string', enum: ['down', 'degraded'], example: 'down' },
             timestamp: { type: 'string', format: 'date-time' },
             version: { type: 'string' },
-            services: { type: 'object' }
+            services: {
+              type: 'object',
+              properties: {
+                database: { type: 'string', enum: ['ok', 'down'], example: 'down' },
+                redis: { type: 'string', enum: ['ok', 'down'], example: 'down' }
+              }
+            }
           }
         }
       }
