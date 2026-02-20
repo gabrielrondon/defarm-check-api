@@ -101,7 +101,7 @@ export class PastureDegradationChecker extends SatelliteBaseChecker {
   readonly config: CheckerConfig = {
     enabled: true,
     cacheTTL: 604800,  // 7 dias
-    timeout: 20000     // ORNL API pode ser lenta
+    timeout: 45000     // 3 ORNL batches × up to 12s each
   };
 
   // --- Main entrypoint ---

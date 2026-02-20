@@ -80,7 +80,7 @@ export class NdviProductivityChecker extends SatelliteBaseChecker {
   readonly config: CheckerConfig = {
     enabled: true,
     cacheTTL: 604800, // 7 days (MODIS updates every 16 days)
-    timeout: 30000
+    timeout: 45000     // 3 ORNL batches × up to 12s each
   };
 
   // --- Main entrypoint ---
