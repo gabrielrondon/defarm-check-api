@@ -55,9 +55,15 @@ export class DeterAlertChecker extends BaseChecker {
     try {
       const { lat, lon } = input.coordinates;
 
-      // Validar coordenadas
+      // Validar coordenadas - DETER only covers Amazônia Legal
       if (!this.isValidCoordinate(lat, lon)) {
-        throw new Error('Invalid coordinates for Amazônia Legal');
+        return {
+          status: CheckStatus.NOT_APPLICABLE,
+          message: 'Location is outside Amazônia Legal (DETER coverage area)',
+          details: { lat, lon, coverage: 'Amazônia Legal (lat -18° to +5°, lon -74° to -42°)' },
+          executionTimeMs: 0,
+          cached: false
+        };
       }
 
       // Query espacial: ST_Contains(geometry, point)
