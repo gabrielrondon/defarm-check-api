@@ -2,13 +2,12 @@
  * NDVI Productivity Checker
  *
  * Consulta séries temporais de NDVI (Normalized Difference Vegetation Index)
- * via NASA APPEEARS API (gratuito). Detecta degradação de pastagem, abandono
- * de área e queda de produtividade vegetal.
+ * via ORNL DAAC MODIS Subset API (gratuito, síncrono, sem autenticação).
+ * Detecta degradação de pastagem, abandono de área e queda de produtividade.
  *
  * Data source: NASA MODIS MOD13Q1 v6.1 (NDVI, 250m, 16 dias)
- * API: https://appeears.earthdatacloud.nasa.gov/api/
- * Auth: NASA Earthdata token (gratuito — urs.earthdata.nasa.gov)
- * Env var: NASA_EARTHDATA_TOKEN
+ * API: https://modis.ornl.gov/rst/api/v1/MOD13Q1/subset
+ * Auth: None (public API)
  *
  * Docs: docs/SATELLITE_IMAGERY_ROADMAP.md
  */
@@ -28,7 +27,7 @@ import { sql } from 'drizzle-orm';
 import { logger } from '../../utils/logger.js';
 
 // --- NDVI classification thresholds ---
-// NDVI is scaled 0–1 in these thresholds (raw NASA values are -2000 to 10000, multiply by 0.0001)
+// NDVI is scaled 0–1 in these thresholds
 const NDVI_THRESHOLDS = {
   sparse_degraded:  0.2,  // < 0.2: bare soil / severely degraded
   low_productivity: 0.35, // 0.2–0.35: degraded pasture / sparse vegetation
@@ -41,27 +40,19 @@ const NDVI_THRESHOLDS = {
 const DEGRADATION_TREND_THRESHOLD = -0.05; // -5 NDVI points = degrading
 const RECOVERY_TREND_THRESHOLD    =  0.05; // +5 NDVI points = recovering
 
-// --- APPEEARS API types ---
+const ORNL_BASE_URL = 'https://modis.ornl.gov/rst/api/v1';
+const MODIS_PRODUCT = 'MOD13Q1'; // Terra Vegetation Indices, 16-Day, 250m
+const MODIS_BAND    = '_250m_16_days_NDVI';
+const SCALE_FACTOR  = 0.0001; // raw values × 0.0001 = NDVI (-1 to 1)
 
-interface AppeearsToken {
-  token: string;
-  expiration: string;
-}
+// --- ORNL DAAC API types ---
 
-interface AppeearsPointRequest {
-  task_name: string;
-  task_type: 'point';
-  startDate: string;   // MM-DD-YYYY
-  endDate: string;
-  recurring: boolean;
-  layers: Array<{ product: string; layer: string }>;
-  coordinates: Array<{ id: string; latitude: number; longitude: number; category?: string }>;
-}
-
-interface AppeearsResult {
-  Date: string;             // YYYY-MM-DD
-  MODIS_Grid_16DAY_250m_500m_VI_NDVI: number | null; // scaled -2000 to 10000
-  Category?: string;
+interface OrnlSubset {
+  header?: { nrows?: number; ncols?: number };
+  subset?: Array<{
+    calendar_date: string;
+    data?: number[];
+  }>;
 }
 
 // --- Checker ---
@@ -71,7 +62,7 @@ export class NdviProductivityChecker extends SatelliteBaseChecker {
     name: 'NDVI Productivity (NASA MODIS)',
     category: CheckerCategory.ENVIRONMENTAL,
     description:
-      'Série temporal de NDVI via NASA APPEEARS/MODIS (250m, 16 dias). ' +
+      'Série temporal de NDVI via ORNL DAAC/MODIS MOD13Q1 (250m, 16 dias). ' +
       'Detecta degradação de pastagem, queda de produtividade e abandono de área.',
     priority: 6,
     supportedInputTypes: [InputType.COORDINATES, InputType.CAR]
@@ -79,33 +70,16 @@ export class NdviProductivityChecker extends SatelliteBaseChecker {
 
   readonly config: CheckerConfig = {
     enabled: true,
-    cacheTTL: 604800, // 7 dias (MODIS atualiza a cada 16 dias)
-    timeout: 30000,   // 30s — APPEEARS é assíncrono, pode demorar
-    apiKey: process.env.NASA_EARTHDATA_TOKEN
+    cacheTTL: 604800, // 7 days (MODIS updates every 16 days)
+    timeout: 30000
   };
-
-  // APPEEARS base URL
-  private readonly baseUrl = 'https://appeears.earthdatacloud.nasa.gov/api';
 
   // --- Main entrypoint ---
 
   async executeCheck(input: NormalizedInput): Promise<CheckerResult> {
-    if (!this.config.apiKey) {
-      return {
-        status: CheckStatus.NOT_APPLICABLE,
-        message: 'NASA Earthdata token not configured (NASA_EARTHDATA_TOKEN)',
-        details: {
-          setup: 'docs/SATELLITE_IMAGERY_ROADMAP.md',
-          registration: 'https://urs.earthdata.nasa.gov/users/new'
-        },
-        executionTimeMs: 0,
-        cached: false
-      };
-    }
-
     let lat: number;
     let lon: number;
-    let locationMeta: Record<string, any> = {};
+    let locationMeta: Record<string, unknown> = {};
 
     if (input.type === InputType.COORDINATES) {
       if (!input.coordinates) throw new Error('Coordinates required');
@@ -135,23 +109,9 @@ export class NdviProductivityChecker extends SatelliteBaseChecker {
       };
     }
 
-    logger.debug({ lat, lon }, 'Fetching NDVI time-series from NASA APPEEARS');
+    logger.debug({ lat, lon }, 'Fetching NDVI time-series from ORNL DAAC MODIS');
 
-    // Calculate date range: last 3 years
-    const endDate   = new Date();
-    const startDate = new Date();
-    startDate.setFullYear(endDate.getFullYear() - 3);
-
-    const formatDate = (d: Date) =>
-      `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}-${d.getFullYear()}`;
-
-    const ndviSeries = await this.fetchNdviSeries(
-      lat,
-      lon,
-      formatDate(startDate),
-      formatDate(endDate)
-    );
-
+    const ndviSeries = await this.fetchNdviSeries(lat, lon);
     return this.buildResult(ndviSeries, locationMeta);
   }
 
@@ -169,137 +129,73 @@ export class NdviProductivityChecker extends SatelliteBaseChecker {
     return result.rows?.[0] ?? null;
   }
 
-  // --- Authenticate with APPEEARS using NASA Earthdata JWT token ---
-  // NASA Earthdata JWT is passed as Bearer to the APPEEARS /login endpoint
-  // which returns an APPEEARS-specific session token.
+  // --- Fetch NDVI time-series from ORNL DAAC (synchronous, no auth) ---
 
-  private async getAppeearsToken(): Promise<string> {
-    const resp = await fetch(`${this.baseUrl}/login`, {
-      method: 'POST',
-      headers: {
-        // NASA Earthdata JWT used as Bearer (not Basic auth)
-        Authorization: `Bearer ${this.config.apiKey}`
-      }
+  private async fetchNdviSeries(lat: number, lon: number): Promise<{ date: string; ndvi: number }[]> {
+    const endDate   = new Date();
+    const startDate = new Date();
+    startDate.setFullYear(endDate.getFullYear() - 3);
+
+    const fmt = (d: Date) => d.toISOString().split('T')[0];
+
+    const url = new URL(`${ORNL_BASE_URL}/${MODIS_PRODUCT}/subset`);
+    url.searchParams.set('latitude',     String(lat));
+    url.searchParams.set('longitude',    String(lon));
+    url.searchParams.set('startDate',    fmt(startDate));
+    url.searchParams.set('endDate',      fmt(endDate));
+    url.searchParams.set('kmAboveBelow', '0');
+    url.searchParams.set('kmLeftRight',  '0');
+    url.searchParams.set('band',         MODIS_BAND);
+
+    const resp = await fetch(url.toString(), {
+      headers: { Accept: 'application/json' },
+      signal:  AbortSignal.timeout(20000)
     });
 
     if (!resp.ok) {
-      throw new Error(`APPEEARS login failed: ${resp.status} ${await resp.text().catch(() => '')}`);
+      logger.warn({ status: resp.status, lat, lon }, 'ORNL MODIS MOD13Q1 API error');
+      return [];
     }
 
-    const data = (await resp.json()) as AppeearsToken;
-    return data.token;
-  }
+    const data    = (await resp.json()) as OrnlSubset;
+    const subsets = data.subset ?? [];
 
-  // --- Submit task and poll for results (synchronous approach via point endpoint) ---
+    const nrows     = data.header?.nrows ?? 1;
+    const ncols     = data.header?.ncols ?? 1;
+    const centerIdx = Math.floor((nrows * ncols) / 2);
 
-  private async fetchNdviSeries(
-    lat: number,
-    lon: number,
-    startDate: string,
-    endDate: string
-  ): Promise<{ date: string; ndvi: number }[]> {
-    const token = await this.getAppeearsToken();
+    const series: Array<{ date: string; ndvi: number }> = [];
 
-    // Submit a point task
-    const taskPayload: AppeearsPointRequest = {
-      task_name: `defarm-ndvi-${Date.now()}`,
-      task_type: 'point',
-      startDate,
-      endDate,
-      recurring: false,
-      layers: [
-        {
-          product: 'MOD13Q1.061',        // MODIS Terra Vegetation Indices, 16-Day 250m
-          layer: '_250m_16_days_NDVI'
-        }
-      ],
-      coordinates: [
-        {
-          id: 'p1',
-          latitude: lat,
-          longitude: lon,
-          category: 'defarm-check'
-        }
-      ]
-    };
-
-    const submitResp = await fetch(`${this.baseUrl}/task`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(taskPayload)
-    });
-
-    if (!submitResp.ok) {
-      throw new Error(`APPEEARS task submission failed: ${submitResp.status}`);
+    for (const s of subsets) {
+      const rawVal = s.data?.[centerIdx];
+      if (rawVal == null || rawVal <= -3000) continue; // fill/no-data sentinel
+      const ndvi = rawVal * SCALE_FACTOR;
+      if (ndvi < -1 || ndvi > 1) continue; // out of valid range
+      series.push({ date: s.calendar_date, ndvi });
     }
 
-    const { task_id } = (await submitResp.json()) as { task_id: string };
-
-    // Poll until done (max 25s, check every 3s)
-    const maxWaitMs   = 25000;
-    const pollMs      = 3000;
-    const deadline    = Date.now() + maxWaitMs;
-    let taskStatus    = 'processing';
-
-    while (taskStatus !== 'done' && Date.now() < deadline) {
-      await new Promise(r => setTimeout(r, pollMs));
-
-      const statusResp = await fetch(`${this.baseUrl}/task/${task_id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (!statusResp.ok) break;
-
-      const statusData = (await statusResp.json()) as { status: string };
-      taskStatus = statusData.status;
-    }
-
-    if (taskStatus !== 'done') {
-      throw new Error('APPEEARS task did not complete within timeout');
-    }
-
-    // Download results
-    const resultsResp = await fetch(
-      `${this.baseUrl}/bundle/${task_id}/MOD13Q1.061--_250m_16_days_NDVI-results`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-
-    if (!resultsResp.ok) {
-      throw new Error(`APPEEARS results download failed: ${resultsResp.status}`);
-    }
-
-    const rawResults = (await resultsResp.json()) as AppeearsResult[];
-
-    // Convert NDVI from scaled integer to float (scale factor 0.0001)
-    return rawResults
-      .filter(r => r.MODIS_Grid_16DAY_250m_500m_VI_NDVI !== null &&
-                   r.MODIS_Grid_16DAY_250m_500m_VI_NDVI !== undefined &&
-                   r.MODIS_Grid_16DAY_250m_500m_VI_NDVI > -3000) // -3000 = no data sentinel
-      .map(r => ({
-        date: r.Date,
-        ndvi: (r.MODIS_Grid_16DAY_250m_500m_VI_NDVI as number) * 0.0001
-      }))
-      .sort((a, b) => a.date.localeCompare(b.date));
+    series.sort((a, b) => a.date.localeCompare(b.date));
+    return series;
   }
 
   // --- Analyze NDVI series and build result ---
 
   private buildResult(
     series: { date: string; ndvi: number }[],
-    location: Record<string, any>
+    location: Record<string, unknown>
   ): CheckerResult {
+    const evidence = {
+      dataSource: 'NASA MODIS MOD13Q1.061 (Terra, 250m, 16-day NDVI) via ORNL DAAC',
+      url: 'https://modis.ornl.gov/',
+      lastUpdate: series.length > 0 ? series[series.length - 1].date : new Date().toISOString().split('T')[0]
+    };
+
     if (series.length < 4) {
       return {
         status: CheckStatus.NOT_APPLICABLE,
         message: 'Insufficient NDVI data for analysis (possible cloud cover or data gap)',
         details: { location, observations: series.length },
-        evidence: {
-          dataSource: 'NASA MODIS MOD13Q1 (250m, 16-day)',
-          url: 'https://appeears.earthdatacloud.nasa.gov/'
-        },
+        evidence,
         executionTimeMs: 0,
         cached: false
       };
@@ -318,11 +214,10 @@ export class NdviProductivityChecker extends SatelliteBaseChecker {
     const secondMean = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
     const trend      = secondMean - firstMean; // positive = improving, negative = degrading
 
-    const currentNdvi   = ndviValues[ndviValues.length - 1];
-    const latestDate    = series[series.length - 1].date;
-    const earliestDate  = series[0].date;
+    const currentNdvi  = ndviValues[ndviValues.length - 1];
+    const latestDate   = series[series.length - 1].date;
+    const earliestDate = series[0].date;
 
-    // Classify current NDVI
     const classifyNdvi = (v: number): string => {
       if (v < NDVI_THRESHOLDS.sparse_degraded)  return 'Solo exposto / Degradação severa';
       if (v < NDVI_THRESHOLDS.low_productivity) return 'Pasto degradado / Vegetação esparsa';
@@ -344,27 +239,21 @@ export class NdviProductivityChecker extends SatelliteBaseChecker {
 
     const baseDetails = {
       location,
-      current_ndvi: parseFloat(currentNdvi.toFixed(3)),
+      current_ndvi:           parseFloat(currentNdvi.toFixed(3)),
       current_classification: currentClassification,
-      trend: parseFloat(trend.toFixed(3)),
-      trend_label: trendLabel,
+      trend:                  parseFloat(trend.toFixed(3)),
+      trend_label:            trendLabel,
       statistics: {
-        mean:  parseFloat(mean.toFixed(3)),
-        min:   parseFloat(min.toFixed(3)),
-        max:   parseFloat(max.toFixed(3)),
+        mean:         parseFloat(mean.toFixed(3)),
+        min:          parseFloat(min.toFixed(3)),
+        max:          parseFloat(max.toFixed(3)),
         observations: series.length,
-        period: `${earliestDate} to ${latestDate}`
+        period:       `${earliestDate} to ${latestDate}`
       },
       time_series: series.map(s => ({
         date: s.date,
         ndvi: parseFloat(s.ndvi.toFixed(3))
       }))
-    };
-
-    const evidence = {
-      dataSource: 'NASA MODIS MOD13Q1.061 (Terra, 250m, 16-day NDVI)',
-      url: 'https://appeears.earthdatacloud.nasa.gov/',
-      lastUpdate: latestDate
     };
 
     // FAIL: severe degradation (low NDVI + declining trend)
@@ -384,10 +273,7 @@ export class NdviProductivityChecker extends SatelliteBaseChecker {
     }
 
     // WARNING: degraded or declining
-    if (
-      currentNdvi < NDVI_THRESHOLDS.low_productivity ||
-      trend < DEGRADATION_TREND_THRESHOLD
-    ) {
+    if (currentNdvi < NDVI_THRESHOLDS.low_productivity || trend < DEGRADATION_TREND_THRESHOLD) {
       return {
         status: CheckStatus.WARNING,
         severity: Severity.MEDIUM,
