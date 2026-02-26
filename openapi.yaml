@@ -2095,6 +2095,7 @@ components:
       required:
         - name
         - category
+        - sourceType
         - status
         - message
       properties:
@@ -2108,6 +2109,12 @@ components:
             - environmental
             - legal
           description: Categoria do checker
+        sourceType:
+          type: string
+          enum:
+            - direct
+            - derived
+          description: Tipo da fonte no pipeline (direta ou derivada por cruzamento)
         status:
           type: string
           enum:

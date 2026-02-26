@@ -7,6 +7,7 @@ function source(name: string, status: CheckStatus): SourceResult {
   return {
     name,
     category: 'environmental',
+    sourceType: 'direct',
     status,
     message: 'test',
     executionTimeMs: 1,
@@ -23,6 +24,7 @@ describe('deriveCompositeSources', () => {
 
     const derived = deriveCompositeSources(input);
     expect(derived.some((r) => r.name === 'Cross Source: Deforestation Escalation')).toBe(true);
+    expect(derived.every((r) => r.sourceType === 'derived')).toBe(true);
   });
 
   it('creates CAR compliance watch when CAR and deforestation indicators are risky', () => {

@@ -31,6 +31,7 @@ export interface CheckMetadata {
 export interface SourceResult extends CheckerResult {
   name: string;
   category: string;
+  sourceType: 'direct' | 'derived';
 }
 
 // Resposta completa do check

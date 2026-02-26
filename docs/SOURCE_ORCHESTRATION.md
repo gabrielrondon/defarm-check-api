@@ -26,6 +26,9 @@ Regras v1:
 
 Essas fontes derivadas entram no `sources[]` final do `/check` e seguem o mesmo formato padrão.
 
+Campo de identificação no output:
+- `sourceType: "direct" | "derived"`
+
 ## Contrato mínimo de fonte
 
 Cada fonte segue o contrato `SourceHandler`:

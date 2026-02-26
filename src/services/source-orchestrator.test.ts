@@ -40,6 +40,7 @@ function makeHandler(config: {
     interpret: (result) => ({
       name: config.name,
       category: config.category,
+      sourceType: 'direct',
       ...result
     })
   };
@@ -112,8 +113,8 @@ describe('SourceOrchestrator', () => {
     expect(output[0]).toMatchObject({
       name: 'DETER Real-Time Alerts',
       category: CheckerCategory.ENVIRONMENTAL,
+      sourceType: 'direct',
       status: CheckStatus.PASS
     });
   });
 });
-

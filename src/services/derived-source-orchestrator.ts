@@ -24,6 +24,7 @@ export function deriveCompositeSources(results: SourceResult[]): SourceResult[] 
     derived.push({
       name: 'Cross Source: Deforestation Escalation',
       category: 'environmental',
+      sourceType: 'derived',
       status: CheckStatus.FAIL,
       severity: Severity.HIGH,
       message: 'PRODES and DETER both indicate active deforestation risk in the same analysis.',
@@ -44,6 +45,7 @@ export function deriveCompositeSources(results: SourceResult[]): SourceResult[] 
     derived.push({
       name: 'Cross Source: CAR Compliance Watch',
       category: 'environmental',
+      sourceType: 'derived',
       status: CheckStatus.WARNING,
       severity: Severity.MEDIUM,
       message: 'CAR irregularity combined with deforestation indicators requires manual audit.',
@@ -65,6 +67,7 @@ export function deriveCompositeSources(results: SourceResult[]): SourceResult[] 
     derived.push({
       name: 'Cross Source: Embargoed CAR Escalation',
       category: 'environmental',
+      sourceType: 'derived',
       status: CheckStatus.FAIL,
       severity: Severity.CRITICAL,
       message: 'IBAMA embargo signal combined with CAR irregularity indicates critical compliance risk.',
@@ -85,6 +88,7 @@ export function deriveCompositeSources(results: SourceResult[]): SourceResult[] 
     derived.push({
       name: 'Cross Source: Active Fire Pressure',
       category: 'environmental',
+      sourceType: 'derived',
       status: CheckStatus.WARNING,
       severity: Severity.HIGH,
       message: 'Fire hotspots and DETER alerts together suggest active pressure requiring rapid follow-up.',

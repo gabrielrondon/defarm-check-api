@@ -30,6 +30,7 @@ export class CheckerSourceAdapter implements SourceHandler {
     return {
       name: this.descriptor.name,
       category: this.descriptor.category,
+      sourceType: 'direct',
       ...result
     };
   }
@@ -60,4 +61,3 @@ export class SourceOrchestrator {
     return results;
   }
 }
-
