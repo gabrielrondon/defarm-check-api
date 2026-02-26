@@ -7,21 +7,43 @@
  * 3. CAR - Extract coordinates from CAR and run spatial checks
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
-import { build } from '../../api/server.js';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { createServer } from '../../api/server.js';
 import type { FastifyInstance } from 'fastify';
+import { db } from '../../db/client.js';
+import { apiKeys } from '../../db/schema.js';
+import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 describe('Universal Spatial Input - Integration Tests', () => {
   let app: FastifyInstance;
   let apiKey: string;
 
   beforeAll(async () => {
-    // Build Fastify app
-    app = await build();
-    await app.ready();
+    apiKey = process.env.TEST_API_KEY || '';
+    if (!apiKey || !apiKey.startsWith('ck_')) {
+      apiKey = `ck_${crypto.randomBytes(32).toString('hex')}`;
+      const keyPrefix = apiKey.slice(3, 15);
+      const keyHash = await bcrypt.hash(apiKey, 10);
 
-    // Use test API key from environment or default
-    apiKey = process.env.TEST_API_KEY || 'test-key-12345';
+      await db.insert(apiKeys).values({
+        name: 'Universal Spatial Input Test Key',
+        keyPrefix,
+        keyHash,
+        isActive: true,
+        permissions: ['read'],
+        rateLimit: 1000,
+        createdBy: 'integration-test'
+      });
+    }
+
+    // Build Fastify app
+    app = await createServer();
+    await app.ready();
+  });
+
+  afterAll(async () => {
+    await app.close();
   });
 
   describe('ADDRESS Input Type', () => {

@@ -75,6 +75,7 @@ export async function checkRoutes(app: FastifyInstance) {
                 properties: {
                   name: { type: 'string' },
                   category: { type: 'string' },
+                  sourceType: { type: 'string', enum: ['direct', 'derived'] },
                   status: { type: 'string' },
                   severity: { type: 'string' },
                   message: { type: 'string' },
