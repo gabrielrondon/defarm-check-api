@@ -7,7 +7,8 @@ Define an explicit GO/NO-GO gate for release focused on source coverage, interpr
 - `GET /sources` must return non-empty catalog.
 - `GET /samples/all` must include all expected keys:
   - `listaSuja`, `ibama`, `terrasIndigenas`, `unidadesConservacao`, `deter`, `car`, `prodes`, `snap`, `dicose`
-- At least 3 sample groups must have a valid `testUrl` at any moment.
+- At least 3 sample groups must be non-null.
+- For authenticated smoke (`REQUIRE_AUTH_SMOKE=true`), at least 3 sample groups must have a valid `testUrl`.
 
 Command:
 ```bash

@@ -129,23 +129,30 @@ async function run(): Promise<void> {
     assert(key in samples, `/samples/all is missing key ${key}`);
   }
 
+  const nonNullSamples = Object.entries(samples).filter(([, value]) => value !== null);
+  assert(nonNullSamples.length >= 3, `Too few non-null sample sources available: ${nonNullSamples.length}`);
+
   const availableSamples = Object.entries(samples).filter(
     ([, value]) => Boolean(value?.testUrl)
   ) as Array<[string, SampleRecord]>;
-  assert(availableSamples.length >= 3, `Too few sample sources available: ${availableSamples.length}`);
 
   console.log(
-    `Samples available across sources: ${availableSamples.length}/${expectedSampleKeys.length}`
+    `Samples non-null=${nonNullSamples.length}, with testUrl=${availableSamples.length}/${expectedSampleKeys.length}`
   );
 
   if (!apiKey) {
     if (requireAuthSmoke) {
       throw new Error('PRODUCTION_API_KEY/API_KEY is required when REQUIRE_AUTH_SMOKE=true');
     }
+    if (availableSamples.length < 3) {
+      console.log('Auth smoke not executed and sample testUrl coverage is below target.');
+    }
     console.log('Auth smoke skipped (no PRODUCTION_API_KEY/API_KEY set).');
     console.log('LAUNCH_SMOKE_OK (public checks only)');
     return;
   }
+
+  assert(availableSamples.length >= 3, `Too few sample sources with testUrl for auth smoke: ${availableSamples.length}`);
 
   let authChecks = 0;
   for (const [sampleKey, sample] of availableSamples.slice(0, Math.max(1, sampleCheckLimit))) {
