@@ -19,6 +19,10 @@ Regras v1:
   - dispara quando PRODES e DETER retornam risco (`FAIL`/`WARNING`)
 - `Cross Source: CAR Compliance Watch`
   - dispara quando CAR tem risco e existe risco em PRODES ou DETER
+- `Cross Source: Embargoed CAR Escalation`
+  - dispara quando IBAMA e CAR retornam risco simultâneo
+- `Cross Source: Active Fire Pressure`
+  - dispara quando Queimadas (`INPE Fire Hotspots`) e DETER retornam risco
 
 Essas fontes derivadas entram no `sources[]` final do `/check` e seguem o mesmo formato padrão.
 

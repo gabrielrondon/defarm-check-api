@@ -17,6 +17,8 @@ export function deriveCompositeSources(results: SourceResult[]): SourceResult[] 
   const prodes = findByName(results, ['prodes']);
   const deter = findByName(results, ['deter']);
   const car = findByName(results, ['car registry', 'car - cadastro ambiental rural', 'car']);
+  const ibama = findByName(results, ['ibama embargoes', 'ibama']);
+  const queimadas = findByName(results, ['inpe fire hotspots', 'queimadas', 'fire hotspots']);
 
   if (prodes && deter && isRiskStatus(prodes.status) && isRiskStatus(deter.status)) {
     derived.push({
@@ -59,6 +61,45 @@ export function deriveCompositeSources(results: SourceResult[]): SourceResult[] 
     });
   }
 
+  if (ibama && car && isRiskStatus(ibama.status) && isRiskStatus(car.status)) {
+    derived.push({
+      name: 'Cross Source: Embargoed CAR Escalation',
+      category: 'environmental',
+      status: CheckStatus.FAIL,
+      severity: Severity.CRITICAL,
+      message: 'IBAMA embargo signal combined with CAR irregularity indicates critical compliance risk.',
+      details: {
+        ruleId: 'cross_embargoed_car_escalation_v1',
+        basedOn: [ibama.name, car.name],
+        statuses: {
+          ibama: ibama.status,
+          car: car.status
+        }
+      },
+      executionTimeMs: 0,
+      cached: false
+    });
+  }
+
+  if (queimadas && deter && isRiskStatus(queimadas.status) && isRiskStatus(deter.status)) {
+    derived.push({
+      name: 'Cross Source: Active Fire Pressure',
+      category: 'environmental',
+      status: CheckStatus.WARNING,
+      severity: Severity.HIGH,
+      message: 'Fire hotspots and DETER alerts together suggest active pressure requiring rapid follow-up.',
+      details: {
+        ruleId: 'cross_active_fire_pressure_v1',
+        basedOn: [queimadas.name, deter.name],
+        statuses: {
+          queimadas: queimadas.status,
+          deter: deter.status
+        }
+      },
+      executionTimeMs: 0,
+      cached: false
+    });
+  }
+
   return derived;
 }
-

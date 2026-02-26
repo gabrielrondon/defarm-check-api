@@ -35,6 +35,26 @@ describe('deriveCompositeSources', () => {
     expect(derived.some((r) => r.name === 'Cross Source: CAR Compliance Watch')).toBe(true);
   });
 
+  it('creates embargoed CAR escalation when IBAMA and CAR are both risky', () => {
+    const input: SourceResult[] = [
+      source('IBAMA Embargoes', CheckStatus.FAIL),
+      source('CAR - Cadastro Ambiental Rural', CheckStatus.WARNING)
+    ];
+
+    const derived = deriveCompositeSources(input);
+    expect(derived.some((r) => r.name === 'Cross Source: Embargoed CAR Escalation')).toBe(true);
+  });
+
+  it('creates active fire pressure when Queimadas and DETER are both risky', () => {
+    const input: SourceResult[] = [
+      source('INPE Fire Hotspots', CheckStatus.WARNING),
+      source('DETER Real-Time Alerts', CheckStatus.FAIL)
+    ];
+
+    const derived = deriveCompositeSources(input);
+    expect(derived.some((r) => r.name === 'Cross Source: Active Fire Pressure')).toBe(true);
+  });
+
   it('returns empty when no cross-risk pattern exists', () => {
     const input: SourceResult[] = [
       source('CAR Registry', CheckStatus.PASS),
@@ -45,4 +65,3 @@ describe('deriveCompositeSources', () => {
     expect(deriveCompositeSources(input)).toEqual([]);
   });
 });
-
