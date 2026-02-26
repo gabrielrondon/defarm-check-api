@@ -7,6 +7,21 @@ Este fluxo padroniza o núcleo da API:
 3. Executar fontes/checkers
 4. Interpretar e retornar `sources[]` no output
 
+## Fontes derivadas (cross-checkers)
+
+Além das fontes diretas, o pipeline pode gerar fontes derivadas cruzando resultados já obtidos.
+
+Implementação atual:
+- `src/services/derived-source-orchestrator.ts`
+
+Regras v1:
+- `Cross Source: Deforestation Escalation`
+  - dispara quando PRODES e DETER retornam risco (`FAIL`/`WARNING`)
+- `Cross Source: CAR Compliance Watch`
+  - dispara quando CAR tem risco e existe risco em PRODES ou DETER
+
+Essas fontes derivadas entram no `sources[]` final do `/check` e seguem o mesmo formato padrão.
+
 ## Contrato mínimo de fonte
 
 Cada fonte segue o contrato `SourceHandler`:
@@ -39,4 +54,3 @@ Cada fonte segue o contrato `SourceHandler`:
 - `CAR Registry`
 
 Essas fontes já passam pelo mesmo pipeline `input -> seleção -> execução -> output`.
-

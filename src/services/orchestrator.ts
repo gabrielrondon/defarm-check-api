@@ -18,6 +18,7 @@ import { deriveL3Insights } from './insights-l3.js';
 import { geocodingService } from './geocoding.js';
 import { InputType } from '../types/input.js';
 import { CheckerSourceAdapter, SourceOrchestrator } from './source-orchestrator.js';
+import { deriveCompositeSources } from './derived-source-orchestrator.js';
 
 export class OrchestratorService {
   // Executa check completo
@@ -39,10 +40,12 @@ export class OrchestratorService {
       logger.debug({ count: selectedSources.length }, 'Selected sources');
 
       // 3. Executar fontes em paralelo
-      const results: SourceResult[] = await sourceOrchestrator.execute(
+      const baseResults: SourceResult[] = await sourceOrchestrator.execute(
         normalizedInput,
         request.options?.sources
       );
+      const derivedResults = deriveCompositeSources(baseResults);
+      const results: SourceResult[] = [...baseResults, ...derivedResults];
 
       // 4. Calcular veredito e score
       const verdict = determineVerdict(results);
