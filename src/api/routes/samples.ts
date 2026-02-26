@@ -919,15 +919,15 @@ Each result includes a \`testUrl\` with the exact request body to copy into \`PO
         200: {
           type: 'object',
           properties: {
-            listaSuja: { type: 'object', nullable: true, description: 'Lista Suja sample (Brazil)' },
-            ibama: { type: 'object', nullable: true, description: 'IBAMA embargo sample (Brazil)' },
-            terrasIndigenas: { type: 'object', nullable: true, description: 'Indigenous land coordinates (Brazil)' },
-            unidadesConservacao: { type: 'object', nullable: true, description: 'Conservation unit coordinates (Brazil)' },
-            deter: { type: 'object', nullable: true, description: 'DETER real-time alert coordinates (Brazil)' },
-            car: { type: 'object', nullable: true, description: 'Irregular CAR registration (Brazil)' },
-            prodes: { type: 'object', nullable: true, description: 'PRODES deforestation coordinates (Brazil)' },
-            snap: { type: 'object', nullable: true, description: 'SNAP protected area coordinates (Uruguay)' },
-            dicose: { type: 'object', nullable: true, description: 'DICOSE livestock registration (Uruguay)' }
+            listaSuja: { type: 'object', nullable: true, additionalProperties: true, description: 'Lista Suja sample (Brazil)' },
+            ibama: { type: 'object', nullable: true, additionalProperties: true, description: 'IBAMA embargo sample (Brazil)' },
+            terrasIndigenas: { type: 'object', nullable: true, additionalProperties: true, description: 'Indigenous land coordinates (Brazil)' },
+            unidadesConservacao: { type: 'object', nullable: true, additionalProperties: true, description: 'Conservation unit coordinates (Brazil)' },
+            deter: { type: 'object', nullable: true, additionalProperties: true, description: 'DETER real-time alert coordinates (Brazil)' },
+            car: { type: 'object', nullable: true, additionalProperties: true, description: 'Irregular CAR registration (Brazil)' },
+            prodes: { type: 'object', nullable: true, additionalProperties: true, description: 'PRODES deforestation coordinates (Brazil)' },
+            snap: { type: 'object', nullable: true, additionalProperties: true, description: 'SNAP protected area coordinates (Uruguay)' },
+            dicose: { type: 'object', nullable: true, additionalProperties: true, description: 'DICOSE livestock registration (Uruguay)' }
           }
         }
       }
