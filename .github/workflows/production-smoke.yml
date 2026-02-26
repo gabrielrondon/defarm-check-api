@@ -16,7 +16,7 @@ jobs:
     env:
       PRODUCTION_API_BASE_URL: ${{ secrets.PRODUCTION_API_BASE_URL }}
       PRODUCTION_API_KEY: ${{ secrets.PRODUCTION_API_KEY }}
-      REQUIRE_AUTH_SMOKE: "false"
+      REQUIRE_AUTH_SMOKE: "true"
       SAMPLE_CHECK_LIMIT: "4"
     steps:
       - uses: actions/checkout@v4
