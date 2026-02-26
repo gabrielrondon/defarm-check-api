@@ -17,6 +17,7 @@ import { deriveL2Insights } from './insights-l2.js';
 import { deriveL3Insights } from './insights-l3.js';
 import { geocodingService } from './geocoding.js';
 import { InputType } from '../types/input.js';
+import { CheckerSourceAdapter, SourceOrchestrator } from './source-orchestrator.js';
 
 export class OrchestratorService {
   // Executa check completo
@@ -30,21 +31,17 @@ export class OrchestratorService {
       // 1. Normalizar input (geocode address if needed)
       const normalizedInput = await this.normalizeInput(request.input);
 
-      // 2. Selecionar checkers
-      const checkers = this.selectCheckers(normalizedInput, request.options?.sources);
+      // 2. Selecionar fontes e executar checkers por fonte
+      const sourceOrchestrator = new SourceOrchestrator(
+        checkerRegistry.getActive().map((checker) => new CheckerSourceAdapter(checker))
+      );
+      const selectedSources = sourceOrchestrator.selectApplicable(normalizedInput, request.options?.sources);
+      logger.debug({ count: selectedSources.length }, 'Selected sources');
 
-      logger.debug({ count: checkers.length }, 'Selected checkers');
-
-      // 3. Executar checkers em paralelo
-      const results = await Promise.all(
-        checkers.map(async (checker) => {
-          const result = await checker.check(normalizedInput);
-          return {
-            name: checker.metadata.name,
-            category: checker.metadata.category,
-            ...result
-          } as SourceResult;
-        })
+      // 3. Executar fontes em paralelo
+      const results: SourceResult[] = await sourceOrchestrator.execute(
+        normalizedInput,
+        request.options?.sources
       );
 
       // 4. Calcular veredito e score
@@ -157,21 +154,6 @@ export class OrchestratorService {
     }
 
     return normalized;
-  }
-
-  // Seleciona checkers baseado no input e opções
-  private selectCheckers(input: NormalizedInput, sources?: string[]) {
-    let checkers = checkerRegistry.getApplicable(input.type);
-
-    // Filtrar por sources específicas se solicitado
-    if (sources && sources.length > 0 && !sources.includes('all')) {
-      checkers = checkers.filter(c =>
-        sources.includes(c.metadata.name) ||
-        sources.includes(c.metadata.category)
-      );
-    }
-
-    return checkers;
   }
 
   // Persiste check no banco
