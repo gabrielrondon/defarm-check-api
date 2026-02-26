@@ -19,6 +19,7 @@ export function deriveCompositeSources(results: SourceResult[]): SourceResult[] 
   const car = findByName(results, ['car registry', 'car - cadastro ambiental rural', 'car']);
   const ibama = findByName(results, ['ibama embargoes', 'ibama']);
   const queimadas = findByName(results, ['inpe fire hotspots', 'queimadas', 'fire hotspots']);
+  const mapbiomas = findByName(results, ['mapbiomas validated deforestation', 'mapbiomas']);
 
   if (prodes && deter && isRiskStatus(prodes.status) && isRiskStatus(deter.status)) {
     derived.push({
@@ -97,6 +98,48 @@ export function deriveCompositeSources(results: SourceResult[]): SourceResult[] 
         basedOn: [queimadas.name, deter.name],
         statuses: {
           queimadas: queimadas.status,
+          deter: deter.status
+        }
+      },
+      executionTimeMs: 0,
+      cached: false
+    });
+  }
+
+  if (ibama && prodes && isRiskStatus(ibama.status) && isRiskStatus(prodes.status)) {
+    derived.push({
+      name: 'Cross Source: Embargoed Deforestation Persistence',
+      category: 'environmental',
+      sourceType: 'derived',
+      status: CheckStatus.FAIL,
+      severity: Severity.CRITICAL,
+      message: 'IBAMA embargo and PRODES deforestation together indicate persistent non-compliance pressure.',
+      details: {
+        ruleId: 'cross_embargoed_deforestation_persistence_v1',
+        basedOn: [ibama.name, prodes.name],
+        statuses: {
+          ibama: ibama.status,
+          prodes: prodes.status
+        }
+      },
+      executionTimeMs: 0,
+      cached: false
+    });
+  }
+
+  if (mapbiomas && deter && isRiskStatus(mapbiomas.status) && isRiskStatus(deter.status)) {
+    derived.push({
+      name: 'Cross Source: Confirmed Active Deforestation',
+      category: 'environmental',
+      sourceType: 'derived',
+      status: CheckStatus.FAIL,
+      severity: Severity.HIGH,
+      message: 'MapBiomas validated alert plus DETER activity indicates ongoing confirmed deforestation.',
+      details: {
+        ruleId: 'cross_confirmed_active_deforestation_v1',
+        basedOn: [mapbiomas.name, deter.name],
+        statuses: {
+          mapbiomas: mapbiomas.status,
           deter: deter.status
         }
       },

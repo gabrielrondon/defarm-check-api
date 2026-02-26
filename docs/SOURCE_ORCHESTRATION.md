@@ -23,6 +23,10 @@ Regras v1:
   - dispara quando IBAMA e CAR retornam risco simultâneo
 - `Cross Source: Active Fire Pressure`
   - dispara quando Queimadas (`INPE Fire Hotspots`) e DETER retornam risco
+- `Cross Source: Embargoed Deforestation Persistence`
+  - dispara quando IBAMA e PRODES retornam risco simultâneo
+- `Cross Source: Confirmed Active Deforestation`
+  - dispara quando MapBiomas Validated Deforestation e DETER retornam risco
 
 Essas fontes derivadas entram no `sources[]` final do `/check` e seguem o mesmo formato padrão.
 

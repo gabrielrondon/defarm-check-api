@@ -57,6 +57,26 @@ describe('deriveCompositeSources', () => {
     expect(derived.some((r) => r.name === 'Cross Source: Active Fire Pressure')).toBe(true);
   });
 
+  it('creates embargoed deforestation persistence when IBAMA and PRODES are both risky', () => {
+    const input: SourceResult[] = [
+      source('IBAMA Embargoes', CheckStatus.WARNING),
+      source('PRODES Deforestation', CheckStatus.FAIL)
+    ];
+
+    const derived = deriveCompositeSources(input);
+    expect(derived.some((r) => r.name === 'Cross Source: Embargoed Deforestation Persistence')).toBe(true);
+  });
+
+  it('creates confirmed active deforestation when MapBiomas and DETER are both risky', () => {
+    const input: SourceResult[] = [
+      source('MapBiomas Validated Deforestation', CheckStatus.FAIL),
+      source('DETER Real-Time Alerts', CheckStatus.WARNING)
+    ];
+
+    const derived = deriveCompositeSources(input);
+    expect(derived.some((r) => r.name === 'Cross Source: Confirmed Active Deforestation')).toBe(true);
+  });
+
   it('returns empty when no cross-risk pattern exists', () => {
     const input: SourceResult[] = [
       source('CAR Registry', CheckStatus.PASS),

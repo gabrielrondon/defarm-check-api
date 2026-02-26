@@ -74,6 +74,7 @@
     "seed:all-production": "tsx scripts/seed-all-production.ts",
     "data:all": "npm run data:lista-suja && npm run data:ibama && npm run data:prodes",
     "test": "vitest",
+    "test:smoke:source-types": "tsx scripts/smoke-source-types-fast.ts",
     "test:coverage": "vitest --coverage",
     "test:e2e": "tsx scripts/test-e2e.ts",
     "lint": "eslint src --ext .ts",

@@ -70,6 +70,11 @@ async function getCandidateCoords(app: any): Promise<Array<{lat:number;lon:numbe
 }
 
 async function main() {
+  if (!process.env.DATABASE_URL) {
+    console.log('SMOKE_SKIPPED: DATABASE_URL not configured');
+    process.exit(0);
+  }
+
   const app = await createServer();
   await app.ready();
   const apiKey = await mkKey();
