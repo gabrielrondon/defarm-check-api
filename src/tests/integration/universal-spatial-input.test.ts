@@ -80,6 +80,11 @@ describe('Universal Spatial Input - Integration Tests', () => {
         checkerNames.includes(name)
       );
       expect(spatialCheckersRan.length).toBeGreaterThan(0);
+
+      // Every source should identify whether it is direct or derived
+      expect(
+        data.sources.every((s: any) => s.sourceType === 'direct' || s.sourceType === 'derived')
+      ).toBe(true);
     });
 
     it('should cache geocoding results', async () => {
