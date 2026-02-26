@@ -70,4 +70,20 @@ describe('L3 Insights Routes - Integration', () => {
       expect(data[0]).toHaveProperty('reason');
     }
   });
+
+  it('should return derived rule metrics', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: '/insights/derived-rules?country=BR&limit=10'
+    });
+
+    expect(response.statusCode).toBe(200);
+    const data = JSON.parse(response.body);
+    expect(Array.isArray(data)).toBe(true);
+    if (data.length > 0) {
+      expect(data[0]).toHaveProperty('ruleId');
+      expect(data[0]).toHaveProperty('ruleName');
+      expect(data[0]).toHaveProperty('triggerCount');
+    }
+  });
 });

@@ -1792,6 +1792,53 @@ paths:
                 items:
                   $ref: '#/components/schemas/L3AuditQueueItem'
 
+  /insights/derived-rules:
+    get:
+      tags:
+        - insights
+      summary: Get derived rule trigger metrics
+      description: Retorna métricas agregadas de disparo das regras derivadas por cruzamento.
+      operationId: getDerivedRuleMetrics
+      parameters:
+        - name: country
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Country'
+          description: País para filtrar métricas
+        - name: fromDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Data inicial (YYYY-MM-DD)
+        - name: toDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Data final (YYYY-MM-DD)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Número máximo de regras retornadas
+      responses:
+        '200':
+          description: Lista agregada por ruleId
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DerivedRuleMetric'
+
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -2396,6 +2443,30 @@ components:
           nullable: true
         hoursSinceGeneration:
           type: integer
+          nullable: true
+
+    DerivedRuleMetric:
+      type: object
+      required:
+        - ruleId
+        - ruleName
+        - triggerCount
+        - affectedChecks
+      properties:
+        ruleId:
+          type: string
+        ruleName:
+          type: string
+        triggerCount:
+          type: integer
+        affectedChecks:
+          type: integer
+        lastTriggeredAt:
+          type: string
+          format: date-time
+          nullable: true
+        avgCheckScore:
+          type: number
           nullable: true
 
     CheckInsights:

@@ -239,4 +239,73 @@ export async function insightsRoutes(app: FastifyInstance) {
 
     return reply.send(queue);
   });
+
+  app.get('/insights/derived-rules', {
+    schema: {
+      tags: ['insights'],
+      summary: 'Get derived rule trigger metrics',
+      description: 'Returns aggregated trigger counts for derived cross-source rules.',
+      querystring: {
+        type: 'object',
+        properties: {
+          country: { type: 'string', enum: COUNTRY_ENUM },
+          fromDate: { type: 'string', format: 'date' },
+          toDate: { type: 'string', format: 'date' },
+          limit: { type: 'number', minimum: 1, maximum: 100, default: 20 }
+        }
+      },
+      response: {
+        200: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              ruleId: { type: 'string' },
+              ruleName: { type: 'string' },
+              triggerCount: { type: 'number' },
+              affectedChecks: { type: 'number' },
+              lastTriggeredAt: { type: 'string' },
+              avgCheckScore: { type: 'number' }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    const { country, fromDate, toDate, limit = 20 } = request.query as {
+      country?: string;
+      fromDate?: string;
+      toDate?: string;
+      limit?: number;
+    };
+
+    const filters = [];
+    if (country) filters.push(sql`cr.country = ${country}`);
+    if (fromDate) filters.push(sql`cr.created_at >= ${fromDate}::date`);
+    if (toDate) filters.push(sql`cr.created_at < (${toDate}::date + INTERVAL '1 day')`);
+    filters.push(sql`(r->'details'->>'ruleId') IS NOT NULL`);
+    filters.push(sql`r->>'sourceType' = 'derived'`);
+
+    const whereClause = filters.length
+      ? sql`WHERE ${sql.join(filters, sql` AND `)}`
+      : sql``;
+
+    const rows = await db.execute(sql`
+      SELECT
+        (r->'details'->>'ruleId')::text as "ruleId",
+        (r->>'name')::text as "ruleName",
+        COUNT(*)::int as "triggerCount",
+        COUNT(DISTINCT cr.id)::int as "affectedChecks",
+        MAX(cr.created_at) as "lastTriggeredAt",
+        ROUND(AVG(cr.score)::numeric, 2)::float as "avgCheckScore"
+      FROM check_requests cr
+      CROSS JOIN LATERAL jsonb_array_elements(COALESCE(cr.results, '[]'::jsonb)) r
+      ${whereClause}
+      GROUP BY 1, 2
+      ORDER BY "triggerCount" DESC, "lastTriggeredAt" DESC
+      LIMIT ${limit}
+    `);
+
+    return reply.send(rows.rows);
+  });
 }
