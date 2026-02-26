@@ -79,6 +79,41 @@ async function getTableCounts() {
   }
 }
 
+async function getL3Freshness() {
+  try {
+    const result = await db.execute(sql`
+      SELECT MAX(generated_at) as last_generated_at
+      FROM l3_trend_snapshots
+    `);
+
+    const lastGeneratedAtRaw = (result.rows?.[0] as any)?.last_generated_at;
+    if (!lastGeneratedAtRaw) {
+      return {
+        status: 'never_generated',
+        lastGeneratedAt: null,
+        hoursSinceGeneration: null
+      };
+    }
+
+    const lastGeneratedAt = new Date(lastGeneratedAtRaw as string);
+    const hoursSinceGeneration = Math.round(
+      (Date.now() - lastGeneratedAt.getTime()) / (1000 * 60 * 60)
+    );
+
+    return {
+      status: hoursSinceGeneration <= 36 ? 'fresh' : 'stale',
+      lastGeneratedAt: lastGeneratedAt.toISOString(),
+      hoursSinceGeneration
+    };
+  } catch (err) {
+    return {
+      status: 'unknown',
+      lastGeneratedAt: null,
+      hoursSinceGeneration: null
+    };
+  }
+}
+
 export async function healthRoutes(app: FastifyInstance) {
   app.get('/health', {
     schema: {
@@ -139,6 +174,14 @@ export async function healthRoutes(app: FastifyInstance) {
                 prodes_deforestation: { type: 'integer', example: 216252 },
                 car_registrations: { type: 'integer', example: 3544068 }
               }
+            },
+            l3Status: {
+              type: 'object',
+              properties: {
+                status: { type: 'string', enum: ['fresh', 'stale', 'never_generated', 'unknown'] },
+                lastGeneratedAt: { type: 'string', format: 'date-time', nullable: true },
+                hoursSinceGeneration: { type: 'integer', nullable: true }
+              }
             }
           }
         },
@@ -180,6 +223,9 @@ export async function healthRoutes(app: FastifyInstance) {
     // Get data freshness (only if DB is up)
     const dataSources = dbStatus === 'ok' ? await getDataFreshness() : [];
     const tableCounts = dbStatus === 'ok' ? await getTableCounts() : null;
+    const l3Status = dbStatus === 'ok'
+      ? await getL3Freshness()
+      : { status: 'unknown', lastGeneratedAt: null, hoursSinceGeneration: null };
 
     // Determine overall freshness status
     const hasStaleSources = dataSources.some(s => s.freshnessStatus === 'stale');
@@ -190,7 +236,7 @@ export async function healthRoutes(app: FastifyInstance) {
       overallStatus = 'down';
     } else if (!redisHealthy && !redisIsInternal) {
       overallStatus = 'down';
-    } else if (hasStaleSources) {
+    } else if (hasStaleSources || l3Status.status === 'stale') {
       overallStatus = 'degraded';
     } else if (hasWarningSources) {
       overallStatus = 'ok'; // Warning is still OK, just informational
@@ -205,7 +251,8 @@ export async function healthRoutes(app: FastifyInstance) {
         redis: redisStatus
       },
       dataSources,
-      tableCounts
+      tableCounts,
+      l3Status
     };
 
     const statusCode = overallStatus === 'ok' ? 200 : 503;

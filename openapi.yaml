@@ -1701,6 +1701,13 @@ paths:
             type: integer
             enum: [7, 30, 90]
           description: Horizonte temporal em dias (opcional)
+        - name: fromDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+          description: Data inicial (YYYY-MM-DD) para filtrar snapshots
         - name: limit
           in: query
           required: false
@@ -1719,6 +1726,71 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/L3TrendSnapshot'
+
+  /insights/l3/portfolio:
+    get:
+      tags:
+        - insights
+      summary: Get portfolio-level L3 summary
+      description: |
+        Retorna snapshot agregado mais recente para país/horizonte e o tamanho
+        sugerido da fila de auditoria.
+      operationId: getL3PortfolioSummary
+      parameters:
+        - name: country
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Country'
+          description: País para agregação (default BR)
+        - name: horizon
+          in: query
+          required: false
+          schema:
+            type: integer
+            enum: [7, 30, 90]
+            default: 30
+          description: Horizonte temporal em dias
+      responses:
+        '200':
+          description: Resumo de portfólio L3
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/L3PortfolioSummary'
+
+  /insights/l3/audit-queue:
+    get:
+      tags:
+        - insights
+      summary: Get suggested audit queue
+      description: Retorna checks recentes priorizados para auditoria manual.
+      operationId: getL3AuditQueue
+      parameters:
+        - name: country
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Country'
+          description: País para priorização (default BR)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 20
+          description: Número máximo de itens na fila
+      responses:
+        '200':
+          description: Itens priorizados para auditoria
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/L3AuditQueueItem'
 
 components:
   securitySchemes:
@@ -2238,6 +2310,87 @@ components:
           type: string
           format: date-time
 
+    L3PortfolioSummary:
+      type: object
+      required:
+        - snapshot
+        - auditQueueSize
+        - generatedAt
+      properties:
+        snapshot:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/L3TrendSnapshot'
+        auditQueueSize:
+          type: integer
+        generatedAt:
+          type: string
+          format: date-time
+
+    L3AuditQueueItem:
+      type: object
+      required:
+        - checkId
+        - country
+        - verdict
+        - score
+        - createdAt
+        - failed_count
+        - warning_count
+        - priority
+        - reason
+      properties:
+        checkId:
+          type: string
+        country:
+          $ref: '#/components/schemas/Country'
+        verdict:
+          type: string
+          enum:
+            - COMPLIANT
+            - NON_COMPLIANT
+            - PARTIAL
+            - UNKNOWN
+        score:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        failed_count:
+          type: integer
+        warning_count:
+          type: integer
+        priority:
+          type: string
+          enum:
+            - HIGH
+            - MEDIUM
+            - LOW
+        reason:
+          type: string
+
+    L3Status:
+      type: object
+      required:
+        - status
+        - lastGeneratedAt
+        - hoursSinceGeneration
+      properties:
+        status:
+          type: string
+          enum:
+            - fresh
+            - stale
+            - never_generated
+            - unknown
+        lastGeneratedAt:
+          type: string
+          format: date-time
+          nullable: true
+        hoursSinceGeneration:
+          type: integer
+          nullable: true
+
     CheckInsights:
       type: object
       properties:
@@ -2319,6 +2472,8 @@ components:
                 - ok
                 - down
               description: Status do Redis (cache)
+        l3Status:
+          $ref: '#/components/schemas/L3Status'
 
     SampleResponse:
       type: object

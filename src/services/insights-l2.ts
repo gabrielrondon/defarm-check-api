@@ -1,13 +1,7 @@
 import { CheckStatus, Severity } from '../types/checker.js';
 import { L2Insights, L2DimensionScore } from '../types/insights.js';
 import { CheckSummary, SourceResult } from '../types/verdict.js';
-
-const FAIL_PENALTY: Record<Severity, number> = {
-  [Severity.CRITICAL]: 40,
-  [Severity.HIGH]: 25,
-  [Severity.MEDIUM]: 15,
-  [Severity.LOW]: 8
-};
+import { L2_DIMENSION_WEIGHTS, L2_FAIL_PENALTY } from '../config/insights.js';
 
 function clampScore(score: number): number {
   return Math.max(0, Math.min(100, Math.round(score)));
@@ -15,7 +9,7 @@ function clampScore(score: number): number {
 
 function getFailPenalty(severity?: Severity): number {
   if (!severity) return 20;
-  return FAIL_PENALTY[severity] ?? 20;
+  return L2_FAIL_PENALTY[severity] ?? 20;
 }
 
 function scoreForCategory(results: SourceResult[], category: string): number {
@@ -56,28 +50,28 @@ export function deriveL2Insights(results: SourceResult[], summary: CheckSummary)
       id: 'environmental_risk_index',
       label: 'Environmental Risk Index',
       score: scoreForCategory(results, 'environmental'),
-      weight: 0.4,
+      weight: L2_DIMENSION_WEIGHTS.environmental,
       rationale: 'Penaliza FAIL/WARNING em fontes ambientais.'
     },
     {
       id: 'social_risk_index',
       label: 'Social Risk Index',
       score: scoreForCategory(results, 'social'),
-      weight: 0.2,
+      weight: L2_DIMENSION_WEIGHTS.social,
       rationale: 'Penaliza FAIL/WARNING em fontes sociais.'
     },
     {
       id: 'legal_risk_index',
       label: 'Legal Risk Index',
       score: scoreForCategory(results, 'legal'),
-      weight: 0.25,
+      weight: L2_DIMENSION_WEIGHTS.legal,
       rationale: 'Penaliza FAIL/WARNING em fontes legais.'
     },
     {
       id: 'data_quality_index',
       label: 'Data Quality Index',
       score: scoreDataQuality(results, summary),
-      weight: 0.15,
+      weight: L2_DIMENSION_WEIGHTS.dataQuality,
       rationale: 'Combina erros de execução, não aplicabilidade e ausência de evidência.'
     }
   ];

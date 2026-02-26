@@ -1,15 +1,39 @@
 import { sql } from 'drizzle-orm';
 import { db } from '../../db/client.js';
 import { logger } from '../../utils/logger.js';
+import { telegram } from '../../services/telegram.js';
+import { L3_EMPTY_SNAPSHOT_ALERT_DAYS, L3_TREND_LABEL_THRESHOLDS } from '../../config/insights.js';
 
 const COUNTRIES = ['BR', 'UY', 'AR', 'PY', 'BO', 'CL', 'CO', 'PE'] as const;
 const HORIZONS = [7, 30, 90] as const;
 
 function getTrendLabel(delta: number | null): string {
   if (delta === null || Number.isNaN(delta)) return 'UNKNOWN';
-  if (delta >= 5) return 'IMPROVING';
-  if (delta <= -5) return 'DETERIORATING';
+  if (delta >= L3_TREND_LABEL_THRESHOLDS.improvingDelta) return 'IMPROVING';
+  if (delta <= L3_TREND_LABEL_THRESHOLDS.deterioratingDelta) return 'DETERIORATING';
   return 'STABLE';
+}
+
+async function maybeNotifyEmptySnapshots(country: string, horizonDays: number): Promise<void> {
+  const result = await db.execute(sql`
+    SELECT COUNT(*)::int AS empty_days
+    FROM l3_trend_snapshots
+    WHERE country = ${country}
+      AND horizon_days = ${horizonDays}
+      AND snapshot_date >= CURRENT_DATE - (${L3_EMPTY_SNAPSHOT_ALERT_DAYS} * INTERVAL '1 day')
+      AND checks_count = 0
+  `);
+
+  const emptyDays = Number((result.rows?.[0] as any)?.empty_days || 0);
+  if (emptyDays < L3_EMPTY_SNAPSHOT_ALERT_DAYS) return;
+
+  await telegram.sendMessage({
+    text: `⚠️ <b>L3 Snapshots Vazios</b>\n\n` +
+      `🌍 País: ${country}\n` +
+      `⏱️ Horizonte: ${horizonDays} dias\n` +
+      `📉 Dias seguidos sem checks: ${emptyDays}\n\n` +
+      `Verificar ingestão/volume de checks neste recorte.`
+  });
 }
 
 async function calculateAndStore(country: string, horizonDays: number): Promise<void> {
@@ -92,6 +116,8 @@ async function calculateAndStore(country: string, horizonDays: number): Promise<
       generated_at = EXCLUDED.generated_at,
       updated_at = EXCLUDED.updated_at
   `);
+
+  await maybeNotifyEmptySnapshots(country, horizonDays);
 }
 
 export async function updateL3Trends(): Promise<void> {
