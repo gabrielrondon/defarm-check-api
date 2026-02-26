@@ -140,6 +140,25 @@ export async function checkRoutes(app: FastifyInstance) {
                       }
                     }
                   }
+                },
+                l3: {
+                  type: 'object',
+                  properties: {
+                    version: { type: 'string' },
+                    signals: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          label: { type: 'string' },
+                          value: {},
+                          horizon: { type: 'string', enum: ['7d', '30d', '90d'] },
+                          confidence: { type: 'number' }
+                        }
+                      }
+                    }
+                  }
                 }
               }
             },

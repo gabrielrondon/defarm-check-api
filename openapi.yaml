@@ -45,7 +45,7 @@ info:
     - DICOSE - Registro Rural/Pecuário (MGAP)
 
     **Documentação completa:** https://github.com/gabrielrondon/defarm-check-api
-  version: 2.11.0
+  version: 2.12.0
   contact:
     name: DeFarm Support
     email: suporte@defarm.com
@@ -71,6 +71,8 @@ tags:
     description: Sample data for testing
   - name: health
     description: Health check endpoints
+  - name: insights
+    description: Strategic insights and trend snapshots
 
 security:
   - ApiKeyAuth: []
@@ -1675,6 +1677,49 @@ paths:
                     items:
                       $ref: '#/components/schemas/CARRegistration'
 
+  /insights/l3:
+    get:
+      tags:
+        - insights
+      summary: Get L3 trend snapshots
+      description: |
+        Retorna snapshots de tendência estratégica (L3) agregados por país e janela temporal.
+
+        **Horizontes suportados:** 7, 30 e 90 dias.
+      operationId: getL3TrendSnapshots
+      parameters:
+        - name: country
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Country'
+          description: Filtrar por país (opcional)
+        - name: horizon
+          in: query
+          required: false
+          schema:
+            type: integer
+            enum: [7, 30, 90]
+          description: Horizonte temporal em dias (opcional)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+            default: 30
+          description: Quantidade máxima de snapshots retornados
+      responses:
+        '200':
+          description: Lista de snapshots L3
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/L3TrendSnapshot'
+
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -2127,11 +2172,79 @@ components:
           items:
             $ref: '#/components/schemas/L2DimensionScore'
 
+    L3Signal:
+      type: object
+      required:
+        - id
+        - label
+        - value
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        value:
+          nullable: true
+          oneOf:
+            - type: string
+            - type: number
+            - type: boolean
+        horizon:
+          type: string
+          enum:
+            - 7d
+            - 30d
+            - 90d
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+
+    L3Insights:
+      type: object
+      required:
+        - version
+        - signals
+      properties:
+        version:
+          type: string
+        signals:
+          type: array
+          items:
+            $ref: '#/components/schemas/L3Signal'
+
+    L3TrendSnapshot:
+      type: object
+      properties:
+        country:
+          type: string
+        horizonDays:
+          type: integer
+        snapshotDate:
+          type: string
+          format: date
+        checksCount:
+          type: integer
+        avgScore:
+          type: number
+        nonCompliantRate:
+          type: number
+        trendDelta:
+          type: number
+        trendLabel:
+          type: string
+        generatedAt:
+          type: string
+          format: date-time
+
     CheckInsights:
       type: object
       properties:
         l2:
           $ref: '#/components/schemas/L2Insights'
+        l3:
+          $ref: '#/components/schemas/L3Insights'
 
     SourceInfo:
       type: object

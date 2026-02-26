@@ -22,6 +22,7 @@ import { backupDatabase } from './jobs/backup-database.js';
 import { updateAnaOutorgas } from './jobs/update-ana-outorgas.js';
 import { updateMapaOrganicos } from './jobs/update-mapa-organicos.js';
 import { cleanupSatelliteCache } from './jobs/cleanup-satellite-cache.js';
+import { updateL3Trends } from './jobs/update-l3-trends.js';
 
 interface ScheduledJob {
   name: string;
@@ -83,6 +84,12 @@ const JOBS: ScheduledJob[] = [
     name: 'Data Freshness Check',
     schedule: '0 8 * * *',  // Diária, 08:00
     handler: checkDataFreshness,
+    enabled: true
+  },
+  {
+    name: 'L3 Trend Snapshots',
+    schedule: '30 8 * * *',  // Diária, 08:30
+    handler: updateL3Trends,
     enabled: true
   },
   {

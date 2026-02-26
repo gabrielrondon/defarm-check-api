@@ -18,6 +18,24 @@ export const checkRequests = pgTable('check_requests', {
   createdBy: uuid('created_by') // user_id se autenticado
 });
 
+// Snapshots agregados L3 por país e horizonte temporal
+export const l3TrendSnapshots = pgTable('l3_trend_snapshots', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  country: varchar('country', { length: 2 }).notNull(),
+  horizonDays: integer('horizon_days').notNull(), // 7, 30, 90
+  snapshotDate: date('snapshot_date').notNull(), // Data da execução do snapshot
+  windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+  windowEnd: timestamp('window_end', { withTimezone: true }).notNull(),
+  checksCount: integer('checks_count').default(0).notNull(),
+  avgScore: doublePrecision('avg_score'),
+  nonCompliantRate: doublePrecision('non_compliant_rate'),
+  trendDelta: doublePrecision('trend_delta'), // média recente - média janela anterior
+  trendLabel: varchar('trend_label', { length: 20 }), // IMPROVING, STABLE, DETERIORATING, UNKNOWN
+  generatedAt: timestamp('generated_at', { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+});
+
 // Registro de fontes/checkers
 export const checkerSources = pgTable('checker_sources', {
   id: uuid('id').defaultRandom().primaryKey(),

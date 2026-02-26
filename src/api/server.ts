@@ -10,6 +10,7 @@ import { sourcesRoutes } from './routes/sources.js';
 import samplesRoutes from './routes/samples.js';
 import { workerRoutes } from './routes/workers.js';
 import carRoutes from './routes/car.js';
+import { insightsRoutes } from './routes/insights.js';
 
 export async function createServer() {
   const app = Fastify({
@@ -33,6 +34,7 @@ export async function createServer() {
   await app.register(samplesRoutes);
   await app.register(workerRoutes);
   await app.register(carRoutes);
+  await app.register(insightsRoutes);
 
   // Root endpoint
   app.get('/', async () => {
@@ -47,6 +49,7 @@ export async function createServer() {
         sources: '/sources',
         samples: '/samples/*',
         workers: '/workers/health',
+        insights: '/insights/l3',
         car: {
           single: 'GET /car/:carNumber',
           geojson: 'GET /car/:carNumber/geojson',
