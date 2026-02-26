@@ -21,7 +21,6 @@ jobs:
 
   source-type-smoke:
     runs-on: ubuntu-latest
-    if: ${{ secrets.DATABASE_URL != '' }}
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       REDIS_URL: ${{ secrets.REDIS_URL }}
