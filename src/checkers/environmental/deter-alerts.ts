@@ -60,6 +60,16 @@ export class DeterAlertChecker extends BaseChecker {
         return {
           status: CheckStatus.NOT_APPLICABLE,
           message: 'Location is outside Amazônia Legal (DETER coverage area)',
+          indicators: [
+            {
+              id: 'deter_coverage_applicable',
+              name: 'DETER coverage applicable',
+              value: false,
+              direction: 'NEUTRAL',
+              confidence: 1,
+              source: 'DETER-B'
+            }
+          ],
           details: { lat, lon, coverage: 'Amazônia Legal (lat -18° to +5°, lon -74° to -42°)' },
           executionTimeMs: 0,
           cached: false
@@ -99,6 +109,25 @@ export class DeterAlertChecker extends BaseChecker {
         return {
           status: CheckStatus.PASS,
           message: 'No recent DETER alerts at this location (last 90 days)',
+          indicators: [
+            {
+              id: 'deter_has_recent_alert',
+              name: 'DETER recent alert found',
+              value: false,
+              direction: 'HIGHER_IS_WORSE',
+              confidence: 1,
+              source: 'DETER-B'
+            },
+            {
+              id: 'deter_recent_alert_count',
+              name: 'DETER recent alert count',
+              value: 0,
+              unit: 'count',
+              direction: 'HIGHER_IS_WORSE',
+              confidence: 1,
+              source: 'DETER-B'
+            }
+          ],
           details: {
             coordinates: { lat, lon },
             daysChecked: 90,
@@ -143,6 +172,43 @@ export class DeterAlertChecker extends BaseChecker {
         status: CheckStatus.FAIL,
         severity,
         message: `Recent deforestation alert detected: ${alert.classname} (${daysAgo} days ago)`,
+        indicators: [
+          {
+            id: 'deter_has_recent_alert',
+            name: 'DETER recent alert found',
+            value: true,
+            direction: 'HIGHER_IS_WORSE',
+            confidence: 1,
+            source: 'DETER-B'
+          },
+          {
+            id: 'deter_recent_alert_count',
+            name: 'DETER recent alert count',
+            value: 1,
+            unit: 'count',
+            direction: 'HIGHER_IS_WORSE',
+            confidence: 1,
+            source: 'DETER-B'
+          },
+          {
+            id: 'deter_alert_days_ago',
+            name: 'DETER alert age',
+            value: daysAgo,
+            unit: 'days',
+            direction: 'LOWER_IS_WORSE',
+            confidence: 1,
+            source: 'DETER-B'
+          },
+          {
+            id: 'deter_alert_area_ha',
+            name: 'DETER alert area',
+            value: Number(alert.area_ha),
+            unit: 'ha',
+            direction: 'HIGHER_IS_WORSE',
+            confidence: 1,
+            source: 'DETER-B'
+          }
+        ],
         details: {
           alertDate: alert.alert_date,
           daysAgo,

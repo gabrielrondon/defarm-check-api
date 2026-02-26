@@ -45,7 +45,7 @@ info:
     - DICOSE - Registro Rural/Pecuário (MGAP)
 
     **Documentação completa:** https://github.com/gabrielrondon/defarm-check-api
-  version: 2.10.0
+  version: 2.11.0
   contact:
     name: DeFarm Support
     email: suporte@defarm.com
@@ -1947,6 +1947,8 @@ components:
             notApplicable:
               type: integer
               description: Checkers não aplicáveis ao input
+        insights:
+          $ref: '#/components/schemas/CheckInsights'
         metadata:
           type: object
           required:
@@ -2023,6 +2025,11 @@ components:
         details:
           type: object
           description: Detalhes específicos do resultado (varia por checker)
+        indicators:
+          type: array
+          description: Indicadores operacionais L1 derivados do checker/fonte
+          items:
+            $ref: '#/components/schemas/L1Indicator'
         evidence:
           type: object
           properties:
@@ -2046,6 +2053,85 @@ components:
         cached:
           type: boolean
           description: Se o resultado veio do cache
+
+    L1Indicator:
+      type: object
+      required:
+        - id
+        - name
+        - value
+      properties:
+        id:
+          type: string
+          description: ID estável do indicador
+        name:
+          type: string
+          description: Nome legível do indicador
+        value:
+          nullable: true
+          oneOf:
+            - type: string
+            - type: number
+            - type: boolean
+          description: Valor do indicador (numérico, textual ou booleano)
+        unit:
+          type: string
+          description: Unidade opcional (ex: ha, km, count, days)
+        direction:
+          type: string
+          enum:
+            - HIGHER_IS_WORSE
+            - LOWER_IS_WORSE
+            - NEUTRAL
+          description: Direção de risco do indicador
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: Confiança do cálculo (0-1)
+        source:
+          type: string
+          description: Fonte oficial do indicador
+
+    L2DimensionScore:
+      type: object
+      required:
+        - id
+        - label
+        - score
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        score:
+          type: number
+          minimum: 0
+          maximum: 100
+        weight:
+          type: number
+        rationale:
+          type: string
+
+    L2Insights:
+      type: object
+      required:
+        - version
+        - dimensions
+      properties:
+        version:
+          type: string
+        dimensions:
+          type: array
+          items:
+            $ref: '#/components/schemas/L2DimensionScore'
+
+    CheckInsights:
+      type: object
+      properties:
+        l2:
+          $ref: '#/components/schemas/L2Insights'
 
     SourceInfo:
       type: object

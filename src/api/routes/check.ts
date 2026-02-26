@@ -79,6 +79,21 @@ export async function checkRoutes(app: FastifyInstance) {
                   severity: { type: 'string' },
                   message: { type: 'string' },
                   details: { type: 'object' },
+                  indicators: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        id: { type: 'string' },
+                        name: { type: 'string' },
+                        value: {},
+                        unit: { type: 'string' },
+                        direction: { type: 'string', enum: ['HIGHER_IS_WORSE', 'LOWER_IS_WORSE', 'NEUTRAL'] },
+                        confidence: { type: 'number' },
+                        source: { type: 'string' }
+                      }
+                    }
+                  },
                   evidence: {
                     type: 'object',
                     properties: {
@@ -102,6 +117,30 @@ export async function checkRoutes(app: FastifyInstance) {
                 warnings: { type: 'number' },
                 errors: { type: 'number' },
                 notApplicable: { type: 'number' }
+              }
+            },
+            insights: {
+              type: 'object',
+              properties: {
+                l2: {
+                  type: 'object',
+                  properties: {
+                    version: { type: 'string' },
+                    dimensions: {
+                      type: 'array',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          id: { type: 'string' },
+                          label: { type: 'string' },
+                          score: { type: 'number' },
+                          weight: { type: 'number' },
+                          rationale: { type: 'string' }
+                        }
+                      }
+                    }
+                  }
+                }
               }
             },
             metadata: {

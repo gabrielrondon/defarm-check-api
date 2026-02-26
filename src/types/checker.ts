@@ -1,3 +1,5 @@
+import { L1Indicator } from './insights.js';
+
 // Categorias de checkers
 export enum CheckerCategory {
   ENVIRONMENTAL = 'environmental',
@@ -38,6 +40,7 @@ export interface CheckerResult {
   message: string;
   details?: Record<string, any>;
   evidence?: Evidence;
+  indicators?: L1Indicator[];
   executionTimeMs: number;
   cached: boolean;
 }

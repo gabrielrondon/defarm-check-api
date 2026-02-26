@@ -79,6 +79,34 @@ export class IbamaEmbargoesChecker extends BaseChecker {
           status: CheckStatus.FAIL,
           severity,
           message: `${record.embargoCount} active embargo(s) found - ${record.totalAreaHa.toFixed(2)}ha embargoed`,
+          indicators: [
+            {
+              id: 'ibama_has_active_embargo',
+              name: 'IBAMA active embargo found',
+              value: true,
+              direction: 'HIGHER_IS_WORSE',
+              confidence: 1,
+              source: 'IBAMA'
+            },
+            {
+              id: 'ibama_embargo_count',
+              name: 'IBAMA embargo count',
+              value: record.embargoCount,
+              unit: 'count',
+              direction: 'HIGHER_IS_WORSE',
+              confidence: 1,
+              source: 'IBAMA'
+            },
+            {
+              id: 'ibama_total_embargo_area_ha',
+              name: 'IBAMA total embargo area',
+              value: Number(record.totalAreaHa.toFixed(2)),
+              unit: 'ha',
+              direction: 'HIGHER_IS_WORSE',
+              confidence: 1,
+              source: 'IBAMA'
+            }
+          ],
           details: {
             name: record.name,
             type: record.type,
@@ -110,6 +138,25 @@ export class IbamaEmbargoesChecker extends BaseChecker {
       return {
         status: CheckStatus.PASS,
         message: 'No active IBAMA embargoes found',
+        indicators: [
+          {
+            id: 'ibama_has_active_embargo',
+            name: 'IBAMA active embargo found',
+            value: false,
+            direction: 'HIGHER_IS_WORSE',
+            confidence: 1,
+            source: 'IBAMA'
+          },
+          {
+            id: 'ibama_embargo_count',
+            name: 'IBAMA embargo count',
+            value: 0,
+            unit: 'count',
+            direction: 'HIGHER_IS_WORSE',
+            confidence: 1,
+            source: 'IBAMA'
+          }
+        ],
         details: {
           source: 'IBAMA - Embargos Ambientais',
           checkedAt: new Date().toISOString()
@@ -187,6 +234,17 @@ export class IbamaEmbargoesChecker extends BaseChecker {
         return {
           status: CheckStatus.PASS,
           message: `No IBAMA embargoes found within ${bufferKm}km`,
+          indicators: [
+            {
+              id: 'ibama_nearby_embargo_count',
+              name: 'IBAMA nearby embargo count',
+              value: 0,
+              unit: 'count',
+              direction: 'HIGHER_IS_WORSE',
+              confidence: 1,
+              source: 'IBAMA'
+            }
+          ],
           details: {
             coordinates: { lat, lon },
             searchRadius_km: bufferKm,
@@ -230,6 +288,35 @@ export class IbamaEmbargoesChecker extends BaseChecker {
         status: CheckStatus.FAIL,
         severity,
         message: `${totalNearbyEmbargos} IBAMA embargo(s) found within ${bufferKm}km (closest: ${minDistanceKm.toFixed(2)}km)`,
+        indicators: [
+          {
+            id: 'ibama_nearby_embargo_count',
+            name: 'IBAMA nearby embargo count',
+            value: totalNearbyEmbargos,
+            unit: 'count',
+            direction: 'HIGHER_IS_WORSE',
+            confidence: 1,
+            source: 'IBAMA'
+          },
+          {
+            id: 'ibama_nearest_embargo_distance_km',
+            name: 'Nearest IBAMA embargo distance',
+            value: Number(minDistanceKm.toFixed(2)),
+            unit: 'km',
+            direction: 'LOWER_IS_WORSE',
+            confidence: 1,
+            source: 'IBAMA'
+          },
+          {
+            id: 'ibama_nearby_embargo_area_ha',
+            name: 'IBAMA nearby embargo area',
+            value: Number(totalAreaHa.toFixed(2)),
+            unit: 'ha',
+            direction: 'HIGHER_IS_WORSE',
+            confidence: 1,
+            source: 'IBAMA'
+          }
+        ],
         details: {
           coordinates: { lat, lon },
           searchRadius_km: bufferKm,

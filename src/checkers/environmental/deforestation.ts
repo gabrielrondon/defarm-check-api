@@ -60,6 +60,33 @@ export class DeforestationChecker extends BaseChecker {
           status: CheckStatus.FAIL,
           severity: Severity.HIGH,
           message: `Deforestation detected: ${data.area_ha}ha in ${data.year}`,
+          indicators: [
+            {
+              id: 'prodes_deforestation_detected',
+              name: 'PRODES deforestation detected',
+              value: true,
+              direction: 'HIGHER_IS_WORSE',
+              confidence: 1,
+              source: 'PRODES'
+            },
+            {
+              id: 'prodes_area_ha',
+              name: 'PRODES detected area',
+              value: data.area_ha,
+              unit: 'ha',
+              direction: 'HIGHER_IS_WORSE',
+              confidence: 1,
+              source: 'PRODES'
+            },
+            {
+              id: 'prodes_year',
+              name: 'PRODES event year',
+              value: data.year,
+              direction: 'NEUTRAL',
+              confidence: 1,
+              source: 'PRODES'
+            }
+          ],
           details: {
             area_ha: data.area_ha,
             year: data.year,
@@ -82,6 +109,25 @@ export class DeforestationChecker extends BaseChecker {
       return {
         status: CheckStatus.PASS,
         message: 'No deforestation detected at this location',
+        indicators: [
+          {
+            id: 'prodes_deforestation_detected',
+            name: 'PRODES deforestation detected',
+            value: false,
+            direction: 'HIGHER_IS_WORSE',
+            confidence: 1,
+            source: 'PRODES'
+          },
+          {
+            id: 'prodes_area_ha',
+            name: 'PRODES detected area',
+            value: 0,
+            unit: 'ha',
+            direction: 'HIGHER_IS_WORSE',
+            confidence: 1,
+            source: 'PRODES'
+          }
+        ],
         details: {
           coordinates: input.coordinates,
           checkedAt: new Date().toISOString()

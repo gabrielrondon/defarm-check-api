@@ -1,4 +1,5 @@
 import { CheckerResult } from './checker';
+import { CheckInsights } from './insights';
 
 // Veredito final
 export enum Verdict {
@@ -45,4 +46,5 @@ export interface CheckResponse {
   sources: SourceResult[];
   summary: CheckSummary;
   metadata: CheckMetadata;
+  insights?: CheckInsights;
 }

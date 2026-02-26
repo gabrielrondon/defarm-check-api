@@ -13,6 +13,7 @@ import {
   generateSummary,
   calculateCacheHitRate
 } from './verdict.js';
+import { deriveL2Insights } from './insights-l2.js';
 import { geocodingService } from './geocoding.js';
 import { InputType } from '../types/input.js';
 
@@ -49,6 +50,7 @@ export class OrchestratorService {
       const verdict = determineVerdict(results);
       const score = calculateScore(results);
       const summary = generateSummary(results);
+      const l2 = deriveL2Insights(results, summary);
       const processingTimeMs = Date.now() - startTime;
 
       // 5. Montar resposta
@@ -64,6 +66,9 @@ export class OrchestratorService {
         score,
         sources: results,
         summary,
+        insights: {
+          l2
+        },
         metadata: {
           processingTimeMs,
           cacheHitRate: calculateCacheHitRate(results),
