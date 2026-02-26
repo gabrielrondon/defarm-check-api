@@ -46,7 +46,7 @@ export async function insightsRoutes(app: FastifyInstance) {
       limit?: number;
     };
 
-    const rows = await db.execute(sql`
+    const baseSelect = sql`
       SELECT
         country,
         horizon_days as "horizonDays",
@@ -58,11 +58,36 @@ export async function insightsRoutes(app: FastifyInstance) {
         trend_label as "trendLabel",
         generated_at as "generatedAt"
       FROM l3_trend_snapshots
-      WHERE (${country}::text IS NULL OR country = ${country})
-        AND (${horizon}::int IS NULL OR horizon_days = ${horizon})
-      ORDER BY snapshot_date DESC, generated_at DESC
-      LIMIT ${limit}
-    `);
+    `;
+
+    let query;
+    if (country && horizon) {
+      query = sql`${baseSelect}
+        WHERE country = ${country}
+          AND horizon_days = ${horizon}
+        ORDER BY snapshot_date DESC, generated_at DESC
+        LIMIT ${limit}
+      `;
+    } else if (country) {
+      query = sql`${baseSelect}
+        WHERE country = ${country}
+        ORDER BY snapshot_date DESC, generated_at DESC
+        LIMIT ${limit}
+      `;
+    } else if (horizon) {
+      query = sql`${baseSelect}
+        WHERE horizon_days = ${horizon}
+        ORDER BY snapshot_date DESC, generated_at DESC
+        LIMIT ${limit}
+      `;
+    } else {
+      query = sql`${baseSelect}
+        ORDER BY snapshot_date DESC, generated_at DESC
+        LIMIT ${limit}
+      `;
+    }
+
+    const rows = await db.execute(query);
 
     return reply.send(rows.rows);
   });
