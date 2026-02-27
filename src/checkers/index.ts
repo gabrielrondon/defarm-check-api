@@ -7,6 +7,7 @@ import repsalArgentinaChecker from './social/repsal-argentina.js';
 
 // Legal checkers
 import cguSanctionsChecker from './legal/cgu-sanctions.js';
+import ieIdentityBridgeChecker from './legal/ie-identity-bridge.js';
 
 // Environmental checkers
 import carChecker from './environmental/car.js';
@@ -45,6 +46,7 @@ import dicoseRuralChecker from './uruguay/dicose-rural.js';
 checkerRegistry.register(slaveLaborChecker);
 checkerRegistry.register(repsalArgentinaChecker);
 checkerRegistry.register(cguSanctionsChecker);
+checkerRegistry.register(ieIdentityBridgeChecker);
 checkerRegistry.register(carChecker);
 checkerRegistry.register(deforestationChecker);
 checkerRegistry.register(ibamaEmbargoesChecker);
