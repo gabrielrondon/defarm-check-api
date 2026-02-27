@@ -148,6 +148,20 @@
       "when": 1771623589252,
       "tag": "0020_exotic_tiger_shark",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1772206200000,
+      "tag": "0021_l3_trend_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1772236200000,
+      "tag": "0022_add_ie_registry",
+      "breakpoints": true
     }
   ]
 }

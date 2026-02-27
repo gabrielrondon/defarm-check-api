@@ -1,4 +1,4 @@
-CREATE TABLE "l3_trend_snapshots" (
+CREATE TABLE IF NOT EXISTS "l3_trend_snapshots" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   "country" varchar(2) NOT NULL,
   "horizon_days" integer NOT NULL,
@@ -15,8 +15,8 @@ CREATE TABLE "l3_trend_snapshots" (
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 
-CREATE UNIQUE INDEX "idx_l3_snapshots_country_horizon_date"
+CREATE UNIQUE INDEX IF NOT EXISTS "idx_l3_snapshots_country_horizon_date"
   ON "l3_trend_snapshots" ("country", "horizon_days", "snapshot_date");
 
-CREATE INDEX "idx_l3_snapshots_country_generated_at"
+CREATE INDEX IF NOT EXISTS "idx_l3_snapshots_country_generated_at"
   ON "l3_trend_snapshots" ("country", "generated_at");

@@ -245,6 +245,72 @@ Use these documents to test the CGU Sanctions checker.`,
   });
 
   /**
+   * GET /samples/ie
+   * Retorna exemplos de Inscrição Estadual (IE) cadastrados no ie_registry
+   */
+  fastify.get('/samples/ie', {
+    schema: {
+      tags: ['samples'],
+      summary: 'Sample: Inscrição Estadual (IE) bridge',
+      description: `Returns up to 10 IE records from \`ie_registry\` to test the IE resolution flow (\`IE -> identity -> CAR candidates\`).`,
+      response: {
+        200: {
+          type: 'object',
+          properties: {
+            source: { type: 'string', example: 'SEFAZ/SINTEGRA bridge (ie_registry)' },
+            count: { type: 'integer', example: 10 },
+            samples: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  ie: { type: 'string', example: '123456789' },
+                  state: { type: 'string', example: 'MT' },
+                  document: { type: 'string', nullable: true, example: '12345678000190' },
+                  documentType: { type: 'string', nullable: true, example: 'CNPJ' },
+                  legalName: { type: 'string', nullable: true, example: 'Fazenda Exemplo LTDA' },
+                  registrationStatus: { type: 'string', nullable: true, example: 'ATIVA' },
+                  municipality: { type: 'string', nullable: true, example: 'Cuiabá' },
+                  testUrl: { type: 'string', example: 'POST /check {"input":{"type":"IE","value":"123456789"}}' }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    const result = await db.execute(sql`
+      SELECT
+        ie,
+        state,
+        document,
+        document_type,
+        legal_name,
+        registration_status,
+        municipality
+      FROM ie_registry
+      ORDER BY updated_at DESC
+      LIMIT 10
+    `);
+
+    return {
+      source: 'SEFAZ/SINTEGRA bridge (ie_registry)',
+      count: result.rows.length,
+      samples: result.rows.map((r: any) => ({
+        ie: r.ie,
+        state: r.state,
+        document: r.document,
+        documentType: r.document_type,
+        legalName: r.legal_name,
+        registrationStatus: r.registration_status,
+        municipality: r.municipality,
+        testUrl: `POST /check {"input":{"type":"IE","value":"${r.ie}"}}`
+      }))
+    };
+  });
+
+  /**
    * GET /samples/terras-indigenas
    * Retorna coordenadas dentro de Terras Indígenas
    */
@@ -913,7 +979,7 @@ Useful for:
 
 Each result includes a \`testUrl\` with the exact request body to copy into \`POST /check\`.
 
-**Brazil sources:** listaSuja, ibama, terrasIndigenas, unidadesConservacao, deter, car, prodes
+**Brazil sources:** listaSuja, ibama, ie, terrasIndigenas, unidadesConservacao, deter, car, prodes
 **Uruguay sources:** snap, dicose`,
       response: {
         200: {
@@ -921,6 +987,7 @@ Each result includes a \`testUrl\` with the exact request body to copy into \`PO
           properties: {
             listaSuja: { type: 'object', nullable: true, additionalProperties: true, description: 'Lista Suja sample (Brazil)' },
             ibama: { type: 'object', nullable: true, additionalProperties: true, description: 'IBAMA embargo sample (Brazil)' },
+            ie: { type: 'object', nullable: true, additionalProperties: true, description: 'Inscrição Estadual sample (Brazil)' },
             terrasIndigenas: { type: 'object', nullable: true, additionalProperties: true, description: 'Indigenous land coordinates (Brazil)' },
             unidadesConservacao: { type: 'object', nullable: true, additionalProperties: true, description: 'Conservation unit coordinates (Brazil)' },
             deter: { type: 'object', nullable: true, additionalProperties: true, description: 'DETER real-time alert coordinates (Brazil)' },
@@ -947,6 +1014,21 @@ Each result includes a \`testUrl\` with the exact request body to copy into \`PO
       FROM ibama_embargoes
       WHERE embargo_count > 0
       ORDER BY RANDOM()
+      LIMIT 1
+    `);
+
+    // IE registry
+    const ie = await db.execute(sql`
+      SELECT
+        ie,
+        state,
+        document,
+        document_type,
+        legal_name,
+        registration_status,
+        municipality
+      FROM ie_registry
+      ORDER BY updated_at DESC
       LIMIT 1
     `);
 
@@ -1056,6 +1138,16 @@ Each result includes a \`testUrl\` with the exact request body to copy into \`PO
         name: ibama.rows[0].name,
         embargoCount: ibama.rows[0].embargo_count,
         testUrl: `POST /check {"input":{"type":"${ibama.rows[0].type}","value":"${ibama.rows[0].document}"}}`
+      } : null,
+      ie: ie.rows[0] ? {
+        ie: ie.rows[0].ie,
+        state: ie.rows[0].state,
+        document: ie.rows[0].document,
+        documentType: ie.rows[0].document_type,
+        legalName: ie.rows[0].legal_name,
+        registrationStatus: ie.rows[0].registration_status,
+        municipality: ie.rows[0].municipality,
+        testUrl: `POST /check {"input":{"type":"IE","value":"${ie.rows[0].ie}"}}`
       } : null,
       terrasIndigenas: ti.rows[0] ? {
         name: ti.rows[0].name,

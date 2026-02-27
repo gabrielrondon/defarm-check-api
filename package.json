@@ -56,6 +56,7 @@
     "seed:snap-areas": "tsx scripts/seed-snap-areas.ts",
     "data:dicose": "tsx scripts/download-dicose.ts",
     "seed:dicose": "tsx scripts/seed-dicose.ts",
+    "seed:ie-registry": "tsx scripts/seed-ie-registry.ts",
     "cron:setup": "bash scripts/cron/setup-cron.sh",
     "cron:test-deter": "tsx scripts/cron/update-deter.ts",
     "cron:test-prodes": "tsx src/worker/jobs/update-prodes.ts",

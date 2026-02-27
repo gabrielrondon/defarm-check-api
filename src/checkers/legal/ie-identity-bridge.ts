@@ -43,18 +43,75 @@ export class IeIdentityBridgeChecker extends BaseChecker {
 
   async executeCheck(input: NormalizedInput): Promise<CheckerResult> {
     const ie = input.value;
+    let resolvedDocument: string | null = null;
+    let resolvedDocumentType: string | null = null;
+    let resolvedLegalName: string | null = null;
+    let resolvedRegistrationStatus: string | null = null;
+    let resolvedState: string | null = null;
+    let resolvedMunicipality: string | null = null;
 
     const attempts: Array<Record<string, unknown>> = [
       {
         step: 'ie_to_document',
-        status: 'MANUAL_REQUIRED',
-        method: 'SEFAZ/SINTEGRA by state (UF-dependent)',
-        message: 'IE does not map directly to CPF/CNPJ in a single national public endpoint.'
+        status: 'PENDING',
+        method: 'IE registry (SEFAZ/SINTEGRA ingestion)',
+        message: 'Trying automatic IE resolution from local registry.'
       }
     ];
 
     let carMatchesByOwner: CarMatch[] = [];
     let carMatchesByCode: CarMatch[] = [];
+
+    try {
+      const ieQuery = await db.execute(sql`
+        SELECT
+          ie,
+          state,
+          document,
+          document_type as "documentType",
+          legal_name as "legalName",
+          registration_status as "registrationStatus",
+          municipality
+        FROM ie_registry
+        WHERE ie = ${ie}
+        LIMIT 1
+      `);
+
+      const row = ieQuery.rows?.[0] as any;
+      if (row) {
+        resolvedDocument = safeString(row.document);
+        resolvedDocumentType = safeString(row.documentType);
+        resolvedLegalName = safeString(row.legalName);
+        resolvedRegistrationStatus = safeString(row.registrationStatus);
+        resolvedState = safeString(row.state);
+        resolvedMunicipality = safeString(row.municipality);
+
+        attempts[0] = {
+          step: 'ie_to_document',
+          status: resolvedDocument ? 'MATCH' : 'PARTIAL',
+          method: 'IE registry (SEFAZ/SINTEGRA ingestion)',
+          message: resolvedDocument
+            ? 'IE resolved to identity document from local registry.'
+            : 'IE found in registry without document field.',
+          document: resolvedDocument,
+          documentType: resolvedDocumentType
+        };
+      } else {
+        attempts[0] = {
+          step: 'ie_to_document',
+          status: 'NO_MATCH',
+          method: 'IE registry (SEFAZ/SINTEGRA ingestion)',
+          message: 'IE not found in local registry. Manual UF lookup still required.'
+        };
+      }
+    } catch (error) {
+      attempts[0] = {
+        step: 'ie_to_document',
+        status: 'ERROR',
+        method: 'IE registry (SEFAZ/SINTEGRA ingestion)',
+        message: (error as Error).message
+      };
+    }
 
     try {
       const ownerQuery = await db.execute(sql`
@@ -66,7 +123,7 @@ export class IeIdentityBridgeChecker extends BaseChecker {
           municipality,
           state
         FROM car_registrations
-        WHERE owner_document = ${ie}
+        WHERE owner_document = ${resolvedDocument || ie}
         LIMIT 10
       `);
 
@@ -83,10 +140,11 @@ export class IeIdentityBridgeChecker extends BaseChecker {
         step: 'car_lookup_by_owner_document',
         status: carMatchesByOwner.length > 0 ? 'MATCH' : 'NO_MATCH',
         matches: carMatchesByOwner.length,
+        documentUsed: resolvedDocument || ie,
         message:
           carMatchesByOwner.length > 0
-            ? 'Found CAR records where owner_document equals provided IE.'
-            : 'No CAR records matched IE as owner_document.'
+            ? 'Found CAR records where owner_document equals resolved identity.'
+            : 'No CAR records matched resolved identity in owner_document.'
       });
     } catch (error) {
       attempts.push({
@@ -165,8 +223,16 @@ export class IeIdentityBridgeChecker extends BaseChecker {
         bridgeType: 'IE_TO_IDENTITY_TO_CAR',
         resolution: {
           identity: {
-            status: 'PARTIAL',
-            note: 'IE is state-level fiscal id; CPF/CNPJ extraction depends on UF data access.'
+            status: resolvedDocument ? 'RESOLVED' : 'NOT_RESOLVED',
+            document: resolvedDocument,
+            documentType: resolvedDocumentType,
+            legalName: resolvedLegalName,
+            registrationStatus: resolvedRegistrationStatus,
+            state: resolvedState,
+            municipality: resolvedMunicipality,
+            note: resolvedDocument
+              ? 'Identity resolved from IE registry.'
+              : 'IE is state-level fiscal id; provide UF-backed data source or manual lookup.'
           },
           car: {
             status: hasCandidates ? 'CANDIDATE_FOUND' : 'NOT_FOUND',

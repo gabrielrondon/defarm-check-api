@@ -33,6 +33,19 @@ const sources = [
       supportedInputs: ['CNPJ', 'CPF']
     }
   },
+  {
+    name: 'IE Identity Bridge',
+    category: 'legal',
+    description: 'Resolve IE para identidade fiscal e tenta vínculos de CAR para prosseguir checagens',
+    dataSourceUrl: 'https://www.car.gov.br/',
+    lastUpdated: new Date('2026-02-27'),
+    isActive: true,
+    priority: 7,
+    config: {
+      cacheTTL: 86400,
+      supportedInputs: ['IE']
+    }
+  },
 
   // ENVIRONMENTAL CHECKERS (SPATIAL)
   {

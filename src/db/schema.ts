@@ -302,6 +302,22 @@ export const cguSancoes = pgTable('cgu_sancoes', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 });
 
+// Tabela de cadastro de Inscrição Estadual (IE) para ponte IE -> CPF/CNPJ
+export const ieRegistry = pgTable('ie_registry', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ie: varchar('ie', { length: 30 }).notNull().unique(), // IE normalizada (somente dígitos)
+  state: varchar('state', { length: 2 }).notNull(), // UF
+  document: varchar('document', { length: 20 }), // CPF/CNPJ (quando disponível)
+  documentType: varchar('document_type', { length: 10 }), // CPF/CNPJ
+  legalName: text('legal_name'), // Razão social / nome cadastral
+  registrationStatus: varchar('registration_status', { length: 50 }), // ATIVA, BAIXADA, SUSPENSA...
+  municipality: varchar('municipality', { length: 255 }),
+  source: varchar('source', { length: 100 }).default('SEFAZ/SINTEGRA'),
+  lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+});
+
 // Índices para performance
 export const checkRequestsIdx = {
   inputTypeIdx: 'idx_check_requests_input_type',
